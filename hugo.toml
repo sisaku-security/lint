@@ -1,4 +1,4 @@
-baseURL = 'https://sisaku-security.github.io/sisakulint/'
+baseURL = 'https://sisaku-security.github.io/lint/'
 languageCode = 'en-us'
 title = 'sisakulint Document'
 publishDir = './public'

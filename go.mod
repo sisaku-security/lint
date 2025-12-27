@@ -1,4 +1,4 @@
-module github.com/sisaku-security/sisakulint.github.io
+module github.com/sisaku-security/lint
 
 go 1.23.0
 
