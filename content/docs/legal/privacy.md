@@ -66,5 +66,5 @@ If you have any questions about this Privacy Policy, please:
 
 ## Open Source
 
-sisakulint-agent is open source software. You can review our code at:
-- [https://github.com/ultra-supara/sisakulint-agent](https://github.com/ultra-supara/sisakulint-agent)
+sisakulint is open source software. You can review our code at:
+- [https://github.com/ultra-supara/sisakulint](https://github.com/ultra-supara/sisakulint)
