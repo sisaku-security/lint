@@ -1,6 +1,6 @@
 +++
 title = 'Legal'
-date = 2024-12-28
+date = 2025-12-28
 weight = 100
 +++
 
