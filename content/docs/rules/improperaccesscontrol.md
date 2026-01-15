@@ -30,7 +30,7 @@ jobs:
 
 ```bash
 vulnerable.yaml:12:9: improper access control: checkout uses label-based approval with 'synchronize' event type and mutable ref. An attacker can modify code after label approval. Fix: 1) Change trigger types from 'synchronize' to 'labeled', 2) Use immutable 'github.event.pull_request.head.sha' instead of mutable 'head.ref'. See https://codeql.github.com/codeql-query-help/actions/actions-improper-access-control/ [improper-access-control]
-      12 |      - uses: actions/checkout@v4
+      12 👈|      - uses: actions/checkout@v4
 ```
 
 ### Security Background
@@ -50,23 +50,35 @@ The vulnerability occurs when three conditions are met:
    └── Workflow does NOT run (no "safe to test" label)
 
 2. Maintainer reviews code and adds "safe to test" label
-   └── Workflow runs with benign code
+   └── Workflow runs with benign code ✓
 
 3. Attacker pushes malicious commit to same PR
    └── "synchronize" event triggers workflow
    └── "safe to test" label is still present
-   └── Workflow runs with MALICIOUS code!
+   └── Workflow runs with MALICIOUS code! 🚨
 
 4. Mutable ref (head.ref) points to the NEW malicious code
    └── Attacker's code executes with access to secrets
+```
+
+**Visual Timeline:**
+
+```
+Time ──────────────────────────────────────────────────────────►
+
+PR opened          Label added       Malicious commit pushed
+    │                  │                      │
+    ▼                  ▼                      ▼
+[Benign code]    [Approved! ✓]    [Still has label! 🚨]
+                                  [head.ref → malicious code]
 ```
 
 #### Why `head.ref` vs `head.sha` matters
 
 | Reference | Type | After new push | Security |
 |-----------|------|----------------|----------|
-| `head.ref` | Branch name | Points to NEW commit | Mutable |
-| `head.sha` | Commit SHA | Points to SAME commit | Immutable |
+| `head.ref` | Branch name | Points to NEW commit | ❌ Mutable |
+| `head.sha` | Commit SHA | Points to SAME commit | ✅ Immutable |
 
 Using `head.ref` (branch name) means the checkout will always get the latest code, even after approval. Using `head.sha` (commit SHA) locks the checkout to the specific commit that was approved.
 
@@ -76,7 +88,71 @@ Using `head.ref` (branch name) means the checkout will always get the latest cod
 - **OWASP Top 10 CI/CD Security Risks:**
   - **CICD-SEC-4:** Poisoned Pipeline Execution (PPE)
 
-### Safe Patterns
+### Technical Detection Mechanism
+
+The rule performs three-step detection:
+
+**Step 1: Identify `pull_request_target` with `synchronize`**
+
+```go
+// In VisitWorkflowPre
+for _, event := range workflow.On {
+    if webhookEvent, ok := event.(*ast.WebhookEvent); ok {
+        if webhookEvent.EventName() == "pull_request_target" {
+            for _, eventType := range webhookEvent.Types {
+                if eventType.Value == "synchronize" {
+                    rule.hasSynchronizeType = true
+                }
+            }
+        }
+    }
+}
+```
+
+**Step 2: Find Checkout Actions with Mutable Refs**
+
+```go
+// In VisitStep
+if action, ok := step.Exec.(*ast.ExecAction); ok {
+    if strings.HasPrefix(action.Uses.Value, "actions/checkout@") {
+        refInput := action.Inputs["ref"]
+        if strings.Contains(refInput.Value.Value, "head.ref") ||
+           strings.Contains(refInput.Value.Value, "github.head_ref") {
+            // Mutable reference detected!
+        }
+    }
+}
+```
+
+**Step 3: Check for Label-Based Conditions**
+
+```go
+// Check step's if condition
+if step.If != nil {
+    if strings.Contains(step.If.Value, "github.event.pull_request.labels") {
+        // Label-based gating detected
+    }
+}
+```
+
+### Detection Logic Explanation
+
+#### Mutable Ref Patterns Detected
+
+The rule detects these dangerous mutable reference patterns:
+
+- `${{ github.event.pull_request.head.ref }}` - PR branch name (mutable)
+- `${{ github.head_ref }}` - Shorthand for PR branch name (mutable)
+
+#### Label-Based Condition Patterns Detected
+
+- `contains(github.event.pull_request.labels.*.name, 'safe to test')`
+- `github.event.pull_request.labels`
+- `github.event.label`
+
+#### Safe Patterns
+
+The rule does NOT flag these patterns:
 
 **Safe Pattern 1: Use `labeled` event type only**
 
@@ -119,6 +195,38 @@ jobs:
     steps:
       - uses: actions/checkout@v4  # Safe: no privileged context
 ```
+
+### Comparison with Untrusted Checkout Rule
+
+| Rule | Focus | Trigger |
+|------|-------|---------|
+| **Untrusted Checkout** | Any checkout of PR code in privileged context | All privileged triggers |
+| **Improper Access Control** | Label approval bypass via `synchronize` + mutable ref | `pull_request_target` with `synchronize` |
+
+The Improper Access Control rule is more specific - it focuses on the combination of label-based approval, `synchronize` events, and mutable references that creates a bypass vulnerability.
+
+### False Positives
+
+The rule has very few false positives because it requires ALL of:
+
+1. `pull_request_target` trigger
+2. `synchronize` in the event types
+3. Checkout with mutable ref (`head.ref` or `github.head_ref`)
+
+If any condition is not met, the rule will not flag the workflow.
+
+### References
+
+#### GitHub Documentation
+- {{< popup_link2 href="https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions" >}}
+- {{< popup_link2 href="https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#pull_request_target" >}}
+
+#### Security Research
+- {{< popup_link2 href="https://codeql.github.com/codeql-query-help/actions/actions-improper-access-control/" >}}
+- {{< popup_link2 href="https://securitylab.github.com/research/github-actions-preventing-pwn-requests/" >}}
+
+#### OWASP Resources
+- {{< popup_link2 href="https://owasp.org/www-project-top-10-ci-cd-security-risks/" >}}
 
 ### Auto-Fix
 
@@ -188,10 +296,15 @@ When this rule triggers:
    - If you don't need secrets access, use `pull_request` instead
    - This is the safest option for running untrusted PR code
 
-### References
+5. **Implement robust approval workflows**
+   - Require label removal on new commits
+   - Use GitHub's required reviews feature
+   - Consider using GitHub Apps for automated approval management
 
-- [GitHub Docs: Security hardening for GitHub Actions](https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions)
-- [GitHub Docs: pull_request_target events](https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#pull_request_target)
+### Additional Resources
+
+For more information on securing GitHub Actions workflows, see:
+- [GitHub Actions Security Best Practices](https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions)
+- [Preventing pwn requests](https://securitylab.github.com/research/github-actions-preventing-pwn-requests/)
 - [CodeQL: Improper Access Control](https://codeql.github.com/codeql-query-help/actions/actions-improper-access-control/)
-- [GitHub Security Lab: Preventing pwn requests](https://securitylab.github.com/research/github-actions-preventing-pwn-requests/)
-- [OWASP CI/CD Top 10](https://owasp.org/www-project-top-10-ci-cd-security-risks/)
+- [OWASP CI/CD Security Top 10](https://owasp.org/www-project-top-10-ci-cd-security-risks/)

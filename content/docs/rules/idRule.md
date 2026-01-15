@@ -1,6 +1,6 @@
 ---
 title: "ID Rule"
-weight: 3
+weight: 1
 ---
 
 ### ID Rule Overview
@@ -71,6 +71,42 @@ GitHub Actions enforces strict naming rules for identifiers:
 | Only alphanumeric, `-`, `_` allowed | `build-test`, `setup_env` | `build.test`, `setup env` |
 | Case-sensitive | `Build` != `build` | - |
 
+### Technical Detection Mechanism
+
+The rule uses regex-based validation:
+
+```go
+// ID validation pattern
+var validID = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_-]*$`)
+
+func (rule *IDRule) validateID(idType string, id *ast.String) {
+    if !validID.MatchString(id.Value) {
+        rule.Errorf(id.Pos,
+            "Invalid %s ID %q. %s IDs must start with a letter or '_', "+
+            "and may contain only alphanumeric characters, '-', or '_'.",
+            idType, id.Value, idType)
+    }
+}
+```
+
+### Detection Logic Explanation
+
+#### What the Rule Checks
+
+1. **Job IDs**: Validates all job identifiers in the workflow
+2. **Step IDs**: Validates all step identifiers within jobs
+3. **First Character**: Must be a letter (a-z, A-Z) or underscore (`_`)
+4. **Subsequent Characters**: May only contain letters, numbers, hyphens, or underscores
+
+#### Common Invalid Patterns
+
+| Pattern | Issue | Fix |
+|---------|-------|-----|
+| `build.test` | Contains period | `build-test` |
+| `setup env` | Contains space | `setup-env` or `setup_env` |
+| `1st-job` | Starts with number | `first-job` or `_1st-job` |
+| `-deploy` | Starts with hyphen | `deploy` or `_deploy` |
+
 ### Valid Patterns
 
 #### Pattern 1: Simple Alphabetic IDs
@@ -104,6 +140,17 @@ jobs:
     steps:
       - run: ./setup.sh
         id: setup_environment
+```
+
+#### Pattern 4: Mixed Conventions
+
+```yaml
+jobs:
+  Build_Stage_1:
+    runs-on: ubuntu-latest
+    steps:
+      - run: make build
+        id: compile-step-1
 ```
 
 ### Best Practices
@@ -140,6 +187,14 @@ jobs:
       - id: install-deps
       - id: run-tests
       - id: build-output
+
+# Consistent: snake_case
+jobs:
+  build_app:
+    steps:
+      - id: install_deps
+      - id: run_tests
+      - id: build_output
 ```
 
 #### 3. Avoid Version Numbers in IDs
@@ -156,6 +211,77 @@ jobs:
   deploy-v1-2-3:
 ```
 
+#### 4. Keep IDs Reasonably Short
+
+Long IDs can make expressions unwieldy:
+
+```yaml
+# Good: Concise
+id: setup-node
+
+# Bad: Too verbose
+id: setup-node-environment-for-building-application
+```
+
+### Cross-References with IDs
+
+#### Job Dependencies
+
+```yaml
+jobs:
+  build:  # Valid ID
+    runs-on: ubuntu-latest
+    steps:
+      - run: make build
+
+  test:
+    needs: build  # References job ID
+    runs-on: ubuntu-latest
+    steps:
+      - run: make test
+```
+
+#### Step Output References
+
+```yaml
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - id: get-version  # Valid step ID
+        run: echo "version=1.0.0" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy
+        run: |
+          echo "Deploying version ${{ steps.get-version.outputs.version }}"
+```
+
+#### Conditional References
+
+```yaml
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - id: check-cache
+        run: |
+          if [ -d "node_modules" ]; then
+            echo "cache-hit=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install dependencies
+        if: steps.check-cache.outputs.cache-hit != 'true'
+        run: npm install
+```
+
+### False Positives
+
+This rule has virtually no false positives because:
+
+1. GitHub's naming rules are well-documented and strict
+2. The validation regex matches GitHub's actual requirements
+3. Invalid IDs will cause workflow failures regardless
+
 ### Related Rules
 
 - **[workflow-call]({{< ref "workflowcall.md" >}})**: Validates reusable workflow syntax
@@ -163,12 +289,22 @@ jobs:
 
 ### References
 
+#### GitHub Documentation
 - [GitHub Docs: Workflow Syntax - Jobs](https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_id)
 - [GitHub Docs: Workflow Syntax - Steps ID](https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstepsid)
 
 {{< popup_link2 href="https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_id" >}}
 
 {{< popup_link2 href="https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstepsid" >}}
+
+### Testing
+
+To test this rule:
+
+```bash
+# Detect invalid IDs
+sisakulint .github/workflows/*.yml
+```
 
 ### Configuration
 

@@ -51,6 +51,53 @@ jobs:
       - run: npm deploy
 ```
 
+### Example Vulnerable Workflow
+
+Common dependency misconfigurations:
+
+```yaml
+name: CI Pipeline
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: npm build
+
+  test:
+    needs: [build, build]  # ❌ Duplicate: 'build' appears twice
+    runs-on: ubuntu-latest
+    steps:
+      - run: npm test
+
+  deploy:
+    needs: release  # ❌ Undefined: 'release' job doesn't exist
+    runs-on: ubuntu-latest
+    steps:
+      - run: npm deploy
+
+  # ❌ Cyclic dependency: a -> b -> c -> a
+  job-a:
+    needs: job-c
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "A"
+
+  job-b:
+    needs: job-a
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "B"
+
+  job-c:
+    needs: job-b
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "C"
+```
+
 ### What the Rule Detects
 
 #### 1. Duplicate Job IDs in Needs
@@ -65,7 +112,7 @@ jobs:
       - run: make build
 
   test:
-    needs: [build, lint, build]  # 'build' duplicated
+    needs: [build, lint, build]  # ❌ 'build' duplicated
     runs-on: ubuntu-latest
     steps:
       - run: make test
@@ -89,7 +136,7 @@ jobs:
       - run: make build
 
   deploy:
-    needs: testing  # 'testing' job doesn't exist
+    needs: testing  # ❌ 'testing' job doesn't exist
     runs-on: ubuntu-latest
     steps:
       - run: make deploy
@@ -112,7 +159,7 @@ jobs:
     steps:
       - run: make build
 
-  build:  # Duplicate job ID
+  build:  # ❌ Duplicate job ID
     runs-on: ubuntu-latest
     steps:
       - run: npm build
@@ -143,7 +190,7 @@ jobs:
       - run: echo "B"
 
   job-c:
-    needs: job-b  # Creates cycle: a -> b -> c -> a
+    needs: job-b  # ❌ Creates cycle: a -> b -> c -> a
     runs-on: ubuntu-latest
     steps:
       - run: echo "C"
@@ -266,6 +313,40 @@ jobs:
       - run: npm run deploy
 ```
 
+### Technical Detection Mechanism
+
+The rule uses a Directed Acyclic Graph (DAG) algorithm to detect cyclic dependencies:
+
+```go
+// Check cyclic dependency using DAG traversal
+func CheckCyclicDependency(nodes map[string]*jobNode) *edge {
+    for _, v := range nodes {
+        if v.status == nodeStatusNew {
+            if e := CheckCyclicNode(v); e != nil {
+                return e
+            }
+        }
+    }
+    return nil
+}
+
+func CheckCyclicNode(v *jobNode) *edge {
+    v.status = nodeStatusActive
+    for _, w := range v.resolved {
+        switch w.status {
+        case nodeStatusActive:
+            return &edge{v, w}  // Cycle detected
+        case nodeStatusNew:
+            if e := CheckCyclicNode(w); e != nil {
+                return e
+            }
+        }
+    }
+    v.status = nodeStatusInactive
+    return nil
+}
+```
+
 ### Best Practices
 
 #### 1. Keep Dependencies Explicit and Minimal
@@ -311,15 +392,107 @@ jobs:
     runs-on: ubuntu-latest
 ```
 
+#### 4. Visualize Dependencies
+
+For complex workflows, document the dependency graph:
+
+```yaml
+# Dependency Graph:
+#
+#   build
+#   /   \
+# lint  test
+#   \   /
+#   deploy
+
+jobs:
+  build: ...
+  lint:
+    needs: build
+  test:
+    needs: build
+  deploy:
+    needs: [lint, test]
+```
+
+### Common Mistakes
+
+#### Mistake 1: Typos in Job References
+
+```yaml
+# ❌ Wrong: Typo in job name
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps: [...]
+
+  test:
+    needs: buidl  # Typo: should be 'build'
+```
+
+#### Mistake 2: Case Sensitivity Confusion
+
+Job IDs are case-insensitive for dependency resolution:
+
+```yaml
+# This works but can be confusing
+jobs:
+  Build:
+    runs-on: ubuntu-latest
+    steps: [...]
+
+  test:
+    needs: build  # Works, but lowercase doesn't match definition
+```
+
+#### Mistake 3: Self-Reference
+
+```yaml
+# ❌ Wrong: Job cannot depend on itself
+jobs:
+  build:
+    needs: build  # Invalid self-reference
+    runs-on: ubuntu-latest
+```
+
 ### Relationship to Other Rules
 
-- **[id]({{< ref "idRule.md" >}})**: Invalid job IDs will cause dependency resolution to fail
+- **[id]({{< ref "idrule.md" >}})**: Invalid job IDs will cause dependency resolution to fail
 - **[workflow-call]({{< ref "workflowcall.md" >}})**: Reusable workflows have their own dependency considerations
+
+### Detection Example
+
+Running sisakulint on a workflow with dependency issues:
+
+```bash
+$ sisakulint .github/workflows/ci.yml
+
+.github/workflows/ci.yml:10:5: job ID "build" duplicates in needs section [needs]
+    10 👈|    needs: [build, build]
+
+.github/workflows/ci.yml:15:5: job ID "deploy" needs job "release" is not defined [needs]
+    15 👈|    needs: release
+
+.github/workflows/ci.yml:20:3: cyclic dependency in needs section found: "job-a" -> "job-c", "job-b" -> "job-a", "job-c" -> "job-b" is detected cycle [needs]
+    20 👈|  job-a:
+```
 
 ### References
 
 - [GitHub Docs: Workflow Syntax - needs](https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idneeds)
 - [GitHub Docs: Using jobs in a workflow](https://docs.github.com/en/actions/using-jobs/using-jobs-in-a-workflow)
+
+### Testing
+
+To test this rule:
+
+```bash
+# Detect dependency issues
+sisakulint .github/workflows/*.yml
+
+# Focus on needs rule only
+sisakulint -ignore ".*" .github/workflows/*.yml 2>&1 | grep needs
+```
 
 ### Configuration
 

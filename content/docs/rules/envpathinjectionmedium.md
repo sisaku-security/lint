@@ -1,6 +1,12 @@
 ---
 title: "PATH Injection Rule (Medium)"
 weight: 10
+# bookFlatSection: false
+# bookToc: true
+# bookHidden: false
+# bookCollapseSection: false
+# bookComments: false
+# bookSearchExclude: false
 ---
 
 ### PATH Injection Rule (Medium) Overview
@@ -64,6 +70,34 @@ jobs:
         run: |
           make build  # Could execute malicious 'make' from attacker's path
 ```
+
+### Attack Scenario
+
+**How PATH Injection Can Be Exploited in Normal Workflows:**
+
+1. **Attacker Forks Repository**: Creates a fork and opens a PR
+
+2. **Malicious Branch Name**: Uses a crafted branch name:
+   ```
+   Branch: ../../../tmp/evil
+   ```
+
+3. **PATH Modified**: The workflow adds the attacker-controlled path:
+   ```bash
+   echo "../../../tmp/evil/tools" >> "$GITHUB_PATH"
+   ```
+
+4. **Commands Potentially Hijacked**: If the attacker can place binaries:
+   ```yaml
+   - name: Build
+     run: |
+       make build  # May execute attacker's 'make' if path resolves
+   ```
+
+5. **Limited Impact**: In normal workflows:
+   - Read-only GITHUB_TOKEN limits damage
+   - Cannot push to repository directly
+   - But can still affect build artifacts and logs
 
 ### Why Medium Severity
 
@@ -130,6 +164,24 @@ sisakulint can automatically fix this vulnerability:
     echo "$(realpath "$HEAD_REF_PATH")/bin" >> "$GITHUB_PATH"
 ```
 
+### Detection Details
+
+The rule detects:
+
+1. **Direct writes to $GITHUB_PATH** using various formats:
+   - `>> $GITHUB_PATH`
+   - `>> "$GITHUB_PATH"`
+   - `>> '${GITHUB_PATH}'`
+   - `>>$GITHUB_PATH`
+
+2. **Untrusted input sources** including:
+   - `github.head_ref`
+   - `github.event.pull_request.head.ref`
+   - `github.event.issue.title`
+   - And other user-controlled fields
+
+3. **Normal workflow triggers** where the impact is medium
+
 ### Comparison with Critical Severity
 
 | Aspect | Medium (Normal Triggers) | Critical (Privileged Triggers) |
@@ -151,6 +203,18 @@ sisakulint can automatically fix this vulnerability:
 - [CodeQL: PATH Injection (Medium)](https://codeql.github.com/codeql-query-help/actions/actions-envpath-injection-medium/)
 - [GitHub Security: Script Injection](https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#understanding-the-risk-of-script-injections)
 - [OWASP: Uncontrolled Search Path Element](https://cwe.mitre.org/data/definitions/427.html)
+
+### Testing
+
+To test this rule with example workflows:
+
+```bash
+# Detect vulnerable patterns
+sisakulint script/actions/envpath-injection-medium.yaml
+
+# Apply auto-fix
+sisakulint -fix on script/actions/envpath-injection-medium.yaml
+```
 
 ### Configuration
 

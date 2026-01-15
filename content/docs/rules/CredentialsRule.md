@@ -50,12 +50,72 @@ Hardcoded credentials in workflow files pose significant security risks:
 3. **Log Exposure**: Hardcoded passwords may appear in CI/CD logs
 4. **Rotation Difficulty**: Changing hardcoded credentials requires code changes and redeployment
 
+#### Attack Scenario
+
+```
+1. Developer hardcodes password in workflow file
+   └── Password committed to repository
+
+2. Repository is forked or accessed by unauthorized user
+   └── Credentials are visible in workflow file
+
+3. Attacker uses credentials to access container registry
+   └── Pulls or pushes malicious container images
+
+4. Supply chain compromise
+   └── Malicious images used in CI/CD pipeline
+```
+
 #### OWASP and CWE Mapping
 
 - **CWE-798**: Use of Hard-coded Credentials
 - **CWE-259**: Use of Hard-coded Password
 - **OWASP CI/CD Security Risks**:
   - **CICD-SEC-6**: Insufficient Credential Hygiene
+
+### Technical Detection Mechanism
+
+The rule analyzes YAML workflow files and checks container/service credential definitions:
+
+```go
+// Detection pattern
+var isExpr = regexp.MustCompile(`^\$\{.+\}$`)
+
+func (rule *CredentialRule) checkCredentials(where string, node *ast.Container) {
+    if node.Credentials != nil &&
+       node.Credentials.Password != nil &&
+       !isExpr.MatchString(node.Credentials.Password.Value) {
+        // Password is hardcoded - not a GitHub Actions expression
+        rule.Errorf(node.Credentials.Password.Pos,
+            "Password found in %s, do not paste password direct hardcode", where)
+    }
+}
+```
+
+### Detection Logic Explanation
+
+#### What the Rule Checks
+
+1. **Container Section**: Validates passwords in job container definitions
+2. **Service Definitions**: Validates passwords in service container credentials
+3. **Expression Detection**: Uses regex `^\$\{.+\}$` to identify GitHub Actions expressions
+
+#### Safe vs Hardcoded Patterns
+
+**Safe (will NOT trigger an error):**
+```yaml
+credentials:
+  username: user
+  password: ${{ secrets.REGISTRY_PASSWORD }}  # Uses secrets - safe
+```
+
+**Hardcoded (will trigger an error):**
+```yaml
+credentials:
+  username: user
+  password: "myPassword123"  # Literal string - unsafe
+  password: myPassword123    # Unquoted literal - unsafe
+```
 
 ### Safe Patterns
 
@@ -164,17 +224,33 @@ jobs:
 ### Related Rules
 
 - **[permissions]({{< ref "permissions.md" >}})**: Ensures workflows follow least-privilege principle
-- **[commit-sha]({{< ref "commitSHARule.md" >}})**: Pins actions to prevent supply chain attacks
+- **[commit-sha]({{< ref "commitsharule.md" >}})**: Pins actions to prevent supply chain attacks
 
 ### References
 
+#### GitHub Documentation
 - [GitHub Docs: Encrypted Secrets](https://docs.github.com/en/actions/security-guides/encrypted-secrets)
 - [GitHub Docs: Using Secrets in GitHub Actions](https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-secrets)
+
+#### Security Resources
 - [CWE-798: Use of Hard-coded Credentials](https://cwe.mitre.org/data/definitions/798.html)
+- [OWASP: Credential Management](https://owasp.org/www-community/attacks/Credential_stuffing)
 
 {{< popup_link2 href="https://docs.github.com/en/actions/security-guides/encrypted-secrets" >}}
 
 {{< popup_link2 href="https://cwe.mitre.org/data/definitions/798.html" >}}
+
+### Testing
+
+To test this rule:
+
+```bash
+# Detect hardcoded credentials
+sisakulint .github/workflows/*.yml
+
+# Apply auto-fix
+sisakulint -fix on .github/workflows/*.yml
+```
 
 ### Configuration
 

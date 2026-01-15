@@ -50,7 +50,7 @@ on: [push, pull_request]
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    # PROBLEM: This ALWAYS evaluates to true!
+    # ❌ PROBLEM: This ALWAYS evaluates to true!
     # The string "${{ github.ref == 'refs/heads/main' }} && ${{ github.event_name == 'push' }}"
     # is a non-empty string, so it's truthy regardless of the actual conditions
     if: ${{ github.ref == 'refs/heads/main' }} && ${{ github.event_name == 'push' }}
@@ -59,14 +59,14 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
-    # PROBLEM: Extra space/text makes this always true
+    # ❌ PROBLEM: Extra space/text makes this always true
     if: true ${{ github.actor != 'dependabot[bot]' }}
     steps:
       - run: echo "Testing..."
 
   release:
     runs-on: ubuntu-latest
-    # PROBLEM: Text before ${{ }} makes this always true
+    # ❌ PROBLEM: Text before ${{ }} makes this always true
     if: Run if ${{ github.ref == 'refs/tags/*' }}
     steps:
       - run: echo "Releasing..."
@@ -79,10 +79,10 @@ jobs:
 When multiple expression blocks are combined with operators outside the blocks:
 
 ```yaml
-# Always true - operators are outside ${{ }}
+# ❌ Always true - operators are outside ${{ }}
 if: ${{ github.ref == 'refs/heads/main' }} && ${{ github.event_name == 'push' }}
 
-# Always true - multiple blocks
+# ❌ Always true - multiple blocks
 if: ${{ condition1 }} || ${{ condition2 }}
 ```
 
@@ -97,13 +97,13 @@ workflow.yml:10:9: The condition '${{ github.ref == 'refs/heads/main' }} && ${{ 
 Any text outside the expression block causes the condition to always be true:
 
 ```yaml
-# Always true - "true" text outside brackets
+# ❌ Always true - "true" text outside brackets
 if: true ${{ github.actor != 'bot' }}
 
-# Always true - comment-like text
+# ❌ Always true - comment-like text
 if: Run if ${{ condition }}
 
-# Always true - trailing space/text
+# ❌ Always true - trailing space/text
 if: ${{ condition }} # this is a comment
 ```
 
@@ -120,10 +120,10 @@ workflow.yml:10:9: The condition 'true ${{ github.actor != 'bot' }}' will always
 Put all logic inside a single `${{ }}`:
 
 ```yaml
-# Correct: All logic inside one block
+# ✅ Correct: All logic inside one block
 if: ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}
 
-# Correct: Complex conditions in one block
+# ✅ Correct: Complex conditions in one block
 if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch' }}
 ```
 
@@ -132,13 +132,13 @@ if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || gith
 Omit `${{ }}` entirely - GitHub auto-evaluates:
 
 ```yaml
-# Correct: No brackets needed for simple expressions
+# ✅ Correct: No brackets needed for simple expressions
 if: github.ref == 'refs/heads/main'
 
-# Correct: Complex conditions without brackets
+# ✅ Correct: Complex conditions without brackets
 if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
-# Correct: Functions work without brackets too
+# ✅ Correct: Functions work without brackets too
 if: success() && github.actor != 'dependabot[bot]'
 ```
 
@@ -147,13 +147,13 @@ if: success() && github.actor != 'dependabot[bot]'
 For explicit true/false:
 
 ```yaml
-# Correct: Literal true
+# ✅ Correct: Literal true
 if: ${{ true }}
 
-# Correct: Literal false
+# ✅ Correct: Literal false
 if: ${{ false }}
 
-# Correct: Without brackets
+# ✅ Correct: Without brackets
 if: true
 if: false
 ```
@@ -161,22 +161,203 @@ if: false
 #### Pattern 4: Using Functions
 
 ```yaml
-# Correct: Status check functions
+# ✅ Correct: Status check functions
 if: success()
 if: failure()
 if: always()
 if: cancelled()
 
-# Correct: Combined with conditions
+# ✅ Correct: Combined with conditions
 if: ${{ success() && github.ref == 'refs/heads/main' }}
 
 # Without brackets
 if: success() && github.ref == 'refs/heads/main'
 ```
 
+#### Pattern 5: Complex Conditional Logic
+
+```yaml
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # ✅ Correct: All logic in one expression
+    if: |
+      ${{
+        github.event_name == 'push' &&
+        github.ref == 'refs/heads/main' &&
+        !contains(github.event.head_commit.message, '[skip deploy]')
+      }}
+    steps:
+      - run: ./deploy.sh
+
+  notify:
+    runs-on: ubuntu-latest
+    needs: [build, test]
+    # ✅ Correct: Using needs context
+    if: ${{ always() && (needs.build.result == 'failure' || needs.test.result == 'failure') }}
+    steps:
+      - run: ./notify-failure.sh
+```
+
+### Why This Happens
+
+GitHub Actions processes `if` conditions as follows:
+
+1. **String interpolation**: `${{ }}` blocks are replaced with their evaluated values
+2. **String evaluation**: The resulting string is then evaluated as a boolean
+3. **Truthiness**: Any non-empty string is truthy in GitHub Actions context
+
+Example of the problem:
+
+```yaml
+# Original condition
+if: ${{ github.ref == 'refs/heads/main' }} && ${{ github.event_name == 'push' }}
+
+# After interpolation (assuming both are true)
+if: true && true
+# This is the STRING "true && true", not boolean operators!
+# Non-empty string → truthy → condition passes
+
+# After interpolation (assuming both are false)
+if: false && false
+# This is the STRING "false && false"
+# Non-empty string → truthy → condition STILL passes!
+```
+
+### Technical Detection Mechanism
+
+The rule checks for conditions that contain `${{ }}` but have additional content:
+
+```go
+func (rule *ConditionalRule) checkcond(n *ast.String) {
+    if n == nil {
+        return
+    }
+    if !n.ContainsExpression() {
+        return
+    }
+    // Check if it's a single ${{ }} expression
+    if strings.HasPrefix(n.Value, "${{") &&
+       strings.HasSuffix(n.Value, "}}") &&
+       strings.Count(n.Value, "${{") == 1 {
+        return  // Valid single expression
+    }
+    // Multiple expressions or extra content detected
+    rule.Errorf(n.Pos,
+        "The condition '%s' will always evaluate to true...",
+        n.Value)
+}
+```
+
+### Common Mistakes
+
+#### Mistake 1: Combining Expressions with External Operators
+
+```yaml
+# ❌ Wrong: && is outside ${{ }}
+if: ${{ condition1 }} && ${{ condition2 }}
+
+# ✅ Correct: && is inside ${{ }}
+if: ${{ condition1 && condition2 }}
+```
+
+#### Mistake 2: Adding Comments or Labels
+
+```yaml
+# ❌ Wrong: Text outside expression
+if: Deploy if ${{ github.ref == 'refs/heads/main' }}
+
+# ✅ Correct: Use name field for description
+name: Deploy (only on main)
+if: ${{ github.ref == 'refs/heads/main' }}
+```
+
+#### Mistake 3: Copy-Paste Errors
+
+```yaml
+# ❌ Wrong: Accidentally duplicated expression
+if: ${{ condition }}${{ condition }}
+
+# ✅ Correct: Single expression
+if: ${{ condition }}
+```
+
+#### Mistake 4: Whitespace Issues
+
+```yaml
+# ❌ Wrong: Trailing content (might be invisible whitespace)
+if: ${{ condition }}
+
+# ✅ Correct: Clean expression
+if: ${{ condition }}
+```
+
+### Best Practices
+
+#### 1. Prefer No Brackets for Simple Conditions
+
+```yaml
+# Simple and clean
+if: github.ref == 'refs/heads/main'
+if: github.event_name == 'push'
+if: success()
+```
+
+#### 2. Use Single Block for Complex Conditions
+
+```yaml
+# All logic in one place
+if: ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' && success() }}
+```
+
+#### 3. Use YAML Multiline for Readability
+
+```yaml
+if: >-
+  ${{
+    github.event_name == 'push' &&
+    github.ref == 'refs/heads/main' &&
+    github.actor != 'dependabot[bot]'
+  }}
+```
+
+#### 4. Document Complex Conditions
+
+```yaml
+# Deploy only on main branch push, excluding bot commits
+name: Deploy to production
+if: ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' && github.actor != 'dependabot[bot]' }}
+```
+
 ### Auto-Fix Support
 
 sisakulint can automatically fix conditional rule violations by removing unnecessary `${{ }}` wrappers from conditions.
+
+#### Auto-Fix Example
+
+**Before (Problematic):**
+```yaml
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.repository.owner.id }} == ${{ github.event.sender.id }}
+    steps:
+      - name: Test
+        if: ${{ steps.previous.outputs.status }} == 'success'
+        run: echo test
+```
+
+**After Auto-Fix:**
+```yaml
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    if: github.event.repository.owner.id  ==  github.event.sender.id
+    steps:
+      - name: Test
+        if: steps.previous.outputs.status  == 'success'
+        run: echo test
+```
 
 #### How to Apply Auto-Fix
 
@@ -188,11 +369,51 @@ sisakulint -fix dry-run .github/workflows/
 sisakulint -fix on .github/workflows/
 ```
 
+#### What the Auto-Fix Does
+
+1. **Removes `${{ }}` wrappers**: Strips the expression brackets while preserving the content
+2. **Fixes both job and step conditions**: Applies to `if:` at job level and step level
+3. **Preserves operators**: Keeps `==`, `!=`, `&&`, `||` and other operators intact
+
+#### Limitations
+
+- The auto-fix removes all `${{ }}` wrappers, which may leave extra whitespace
+- Manual review is recommended after applying fixes
+- Complex multi-line conditions may need manual adjustment
+
+### Relationship to Other Rules
+
+- **[expression]({{< ref "expressionrule.md" >}})**: Validates expression syntax within `${{ }}`
+- **[code-injection-critical]({{< ref "codeinjectioncritical.md" >}})**: Checks for untrusted input in conditions
+
+### Detection Example
+
+Running sisakulint on a workflow with conditional issues:
+
+```bash
+$ sisakulint .github/workflows/ci.yml
+
+.github/workflows/ci.yml:10:9: The condition '${{ github.ref == 'refs/heads/main' }} && ${{ github.event_name == 'push' }}' will always evaluate to true. If you intended to use a literal value, please use ${{ true }}. Ensure there are no extra characters within the ${{ }} brackets in conditions. [cond]
+    10 👈|    if: ${{ github.ref == 'refs/heads/main' }} && ${{ github.event_name == 'push' }}
+
+.github/workflows/ci.yml:20:9: The condition 'true ${{ github.actor != 'dependabot[bot]' }}' will always evaluate to true. If you intended to use a literal value, please use ${{ true }}. Ensure there are no extra characters within the ${{ }} brackets in conditions. [cond]
+    20 👈|    if: true ${{ github.actor != 'dependabot[bot]' }}
+```
+
 ### References
 
 - [GitHub Docs: Workflow Syntax - if conditions](https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idif)
 - [GitHub Docs: Expressions](https://docs.github.com/en/actions/learn-github-actions/expressions)
 - [GitHub Docs: Contexts](https://docs.github.com/en/actions/learn-github-actions/contexts)
+
+### Testing
+
+To test this rule:
+
+```bash
+# Detect conditional issues
+sisakulint .github/workflows/*.yml
+```
 
 ### Configuration
 

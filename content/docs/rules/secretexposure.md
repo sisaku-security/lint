@@ -1,6 +1,12 @@
 ---
 title: "Secret Exposure Rule"
 weight: 1
+# bookFlatSection: false
+# bookToc: true
+# bookHidden: false
+# bookCollapseSection: false
+# bookComments: false
+# bookSearchExclude: false
 ---
 
 ### Secret Exposure Rule Overview
@@ -119,10 +125,10 @@ jobs:
 $ sisakulint ./vulnerable-workflow.yaml
 
 ./vulnerable-workflow.yaml:8:20: excessive secrets exposure: toJSON(secrets) exposes all repository and organization secrets at once. Use specific secret references like secrets.MY_SECRET instead. See https://codeql.github.com/codeql-query-help/actions/actions-excessive-secrets-exposure/ [secret-exposure]
-       8 |      ALL_SECRETS: ${{ toJSON(secrets) }}
+       8 👈|      ALL_SECRETS: ${{ toJSON(secrets) }}
 
 ./vulnerable-workflow.yaml:22:18: excessive secrets exposure: secrets[format(...)] dynamically constructs the secret name. This pattern exposes more secrets than necessary and makes security auditing difficult. Use conditional logic with explicit secret references instead. See https://codeql.github.com/codeql-query-help/actions/actions-excessive-secrets-exposure/ [secret-exposure]
-      22 |          TOKEN: ${{ secrets[format('DEPLOY_TOKEN_%s', matrix.env)] }}
+      22 👈|          TOKEN: ${{ secrets[format('DEPLOY_TOKEN_%s', matrix.env)] }}
 ```
 
 ### Safe Patterns
@@ -269,3 +275,9 @@ This rule addresses **CICD-SEC-2: Inadequate Identity and Access Management** by
 - [CodeQL: Excessive Secrets Exposure](https://codeql.github.com/codeql-query-help/actions/actions-excessive-secrets-exposure/)
 - [GitHub Actions: Using Secrets](https://docs.github.com/en/actions/security-guides/using-secrets-in-github-actions)
 - [OWASP CI/CD Top 10: CICD-SEC-2](https://owasp.org/www-project-top-10-ci-cd-security-risks/CICD-SEC-02-Inadequate-Identity-And-Access-Management)
+
+{{< popup_link2 href="https://codeql.github.com/codeql-query-help/actions/actions-excessive-secrets-exposure/" >}}
+
+{{< popup_link2 href="https://docs.github.com/en/actions/security-guides/using-secrets-in-github-actions" >}}
+
+{{< popup_link2 href="https://owasp.org/www-project-top-10-ci-cd-security-risks/CICD-SEC-02-Inadequate-Identity-And-Access-Management" >}}

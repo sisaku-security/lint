@@ -1,6 +1,12 @@
 ---
 title: "PATH Injection Rule (Critical)"
 weight: 10
+# bookFlatSection: false
+# bookToc: true
+# bookHidden: false
+# bookCollapseSection: false
+# bookComments: false
+# bookSearchExclude: false
 ---
 
 ### PATH Injection Rule (Critical) Overview
@@ -87,13 +93,28 @@ jobs:
    # Now PATH becomes: /tmp/evil/tools:/usr/local/bin:/usr/bin:...
    ```
 
-4. **Commands Hijacked**: Subsequent steps execute attacker-controlled binaries
+4. **Commands Hijacked**: Subsequent steps execute attacker-controlled binaries:
+   ```yaml
+   - name: Build and deploy
+     run: |
+       npm install  # Executes /tmp/evil/tools/npm instead of real npm
+       python setup.py build  # Executes attacker's python
+   ```
 
 5. **Code Execution Achieved**: The attacker's fake `npm` or `python`:
    - Captures all arguments (including secrets)
    - Exfiltrates credentials via network calls
    - Injects backdoors into build artifacts
    - Modifies source code before compilation
+
+### What Makes This Critical
+
+**Privileged workflows with PATH injection are particularly dangerous because:**
+
+1. **Write Access**: Workflows can modify repository content, create releases, and manage secrets
+2. **Command Interception**: Unlike code injection, PATH hijacking intercepts ALL commands
+3. **Stealth**: Fake commands can call real commands after exfiltration, hiding the attack
+4. **Supply Chain Impact**: Compromised builds can poison production deployments
 
 ### Safe Pattern (Using Path Validation with realpath)
 
@@ -144,6 +165,43 @@ sisakulint can automatically fix this vulnerability:
     echo "$(realpath "$PR_HEAD_REF_PATH")/bin" >> "$GITHUB_PATH"
 ```
 
+### Detection Details
+
+The rule detects:
+
+1. **Direct writes to $GITHUB_PATH** using various formats:
+   - `>> $GITHUB_PATH`
+   - `>> "$GITHUB_PATH"`
+   - `>> '${GITHUB_PATH}'`
+   - `>>$GITHUB_PATH`
+
+2. **Untrusted input sources** including:
+   - `github.event.pull_request.head.ref`
+   - `github.event.pull_request.head.sha`
+   - `github.event.issue.title`
+   - `github.event.comment.body`
+   - And other user-controlled fields
+
+3. **Privileged workflow triggers** where the impact is critical
+
+### Why This Pattern is Dangerous
+
+Writing untrusted input to `$GITHUB_PATH` without validation allows attackers to:
+
+1. **Path Traversal**: Use `../` sequences to reference directories outside the workspace
+2. **Command Hijacking**: Place malicious executables that shadow legitimate commands
+3. **Build Tool Replacement**: Replace `npm`, `pip`, `go`, `cargo`, etc. with trojaned versions
+4. **Persistent Compromise**: The modified PATH affects ALL subsequent steps
+
+### Real-World Impact
+
+PATH injection in privileged workflows can lead to:
+
+- **Supply Chain Compromise**: Trojaned build tools inject backdoors into releases
+- **Secret Theft**: Fake commands capture GITHUB_TOKEN and other secrets
+- **Repository Takeover**: With write permissions, attackers can push malicious code
+- **Artifact Poisoning**: Modified builds contain hidden malware
+
 ### Related Rules
 
 - **[envpath-injection-medium]({{< ref "envpathinjectionmedium.md" >}})**: Detects the same pattern in normal (non-privileged) workflows
@@ -157,6 +215,18 @@ sisakulint can automatically fix this vulnerability:
 - [GitHub Security: Script Injection](https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#understanding-the-risk-of-script-injections)
 - [OWASP: Uncontrolled Search Path Element](https://cwe.mitre.org/data/definitions/427.html)
 - [OWASP Top 10 CI/CD Security Risks](https://owasp.org/www-project-top-10-ci-cd-security-risks/)
+
+### Testing
+
+To test this rule with example workflows:
+
+```bash
+# Detect vulnerable patterns
+sisakulint script/actions/envpath-injection-critical.yaml
+
+# Apply auto-fix
+sisakulint -fix on script/actions/envpath-injection-critical.yaml
+```
 
 ### Configuration
 

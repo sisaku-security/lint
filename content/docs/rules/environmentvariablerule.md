@@ -70,20 +70,20 @@ name: CI Build
 on: [push]
 
 env:
-  MY VAR: "value"        # Contains space
-  DB=CONNECTION: "value" # Contains equals sign
-  API&KEY: "secret"      # Contains ampersand
+  MY VAR: "value"        # ❌ Contains space
+  DB=CONNECTION: "value" # ❌ Contains equals sign
+  API&KEY: "secret"      # ❌ Contains ampersand
 
 jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      BUILD FLAG: "true"  # Contains space
+      BUILD FLAG: "true"  # ❌ Contains space
 
     steps:
       - name: Test
         env:
-          TEST&MODE: "unit"  # Contains ampersand
+          TEST&MODE: "unit"  # ❌ Contains ampersand
         run: echo "Testing"
 ```
 
@@ -95,7 +95,7 @@ Environment variable names cannot contain spaces:
 
 ```yaml
 env:
-  MY VARIABLE: "value"  # Invalid: contains space
+  MY VARIABLE: "value"  # ❌ Invalid: contains space
 ```
 
 **Error Output:**
@@ -110,7 +110,13 @@ Variable names cannot contain `=`:
 
 ```yaml
 env:
-  DB=HOST: "localhost"  # Invalid: contains equals sign
+  DB=HOST: "localhost"  # ❌ Invalid: contains equals sign
+```
+
+**Error Output:**
+
+```bash
+workflow.yml:5:3: Environment variable name '"DB=HOST"' is not formatted correctly. Please ensure that it does not include characters such as '&', '=', or spaces, as these are not allowed in variable names. [env-var]
 ```
 
 #### 3. Ampersands in Variable Names
@@ -119,7 +125,13 @@ Variable names cannot contain `&`:
 
 ```yaml
 env:
-  USER&PASS: "secret"  # Invalid: contains ampersand
+  USER&PASS: "secret"  # ❌ Invalid: contains ampersand
+```
+
+**Error Output:**
+
+```bash
+workflow.yml:5:3: Environment variable name '"USER&PASS"' is not formatted correctly. Please ensure that it does not include characters such as '&', '=', or spaces, as these are not allowed in variable names. [env-var]
 ```
 
 ### Safe Patterns
@@ -155,6 +167,63 @@ When using expressions, the rule allows dynamic naming:
 env:
   ${{ matrix.env_name }}: ${{ matrix.env_value }}
 ```
+
+#### Pattern 4: Container and Service Environment Variables
+
+```yaml
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    container:
+      image: node:18
+      env:
+        NODE_OPTIONS: "--max-old-space-size=4096"
+
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test_db
+```
+
+### Technical Detection Mechanism
+
+The rule checks environment variable names at multiple levels:
+
+```go
+func (checker *EnvironmentVariableChecker) validateEnvironmentVariables(env *ast.Env) {
+    if env == nil || env.Expression != nil {
+        return
+    }
+    for _, variable := range env.Vars {
+        if variable.Name.ContainsExpression() {
+            continue // Variable names can contain expressions (#312)
+        }
+        if strings.ContainsAny(variable.Name.Value, "&= ") {
+            checker.Errorf(
+                variable.Name.Pos,
+                "Environment variable name '%q' is not formatted correctly...",
+                variable.Name.Value,
+            )
+        }
+    }
+}
+```
+
+### Validation Scope
+
+The rule validates environment variables at all levels:
+
+| Level | YAML Path | Example |
+|-------|-----------|---------|
+| Workflow | `env:` | Top-level environment variables |
+| Job | `jobs.<job_id>.env:` | Job-specific variables |
+| Step | `jobs.<job_id>.steps[*].env:` | Step-specific variables |
+| Container | `jobs.<job_id>.container.env:` | Container environment |
+| Service | `jobs.<job_id>.services.<service_id>.env:` | Service environment |
 
 ### Best Practices
 
@@ -207,11 +276,97 @@ env:
   X: "something"
 ```
 
+#### 4. Group Related Variables
+
+Organize environment variables logically:
+
+```yaml
+env:
+  # Database configuration
+  DB_HOST: "localhost"
+  DB_PORT: "5432"
+  DB_NAME: "myapp"
+
+  # API configuration
+  API_URL: "https://api.example.com"
+  API_TIMEOUT: "30"
+```
+
+### Common Mistakes
+
+#### Mistake 1: Copy-Paste Errors
+
+```yaml
+# ❌ Wrong: Accidentally included shell syntax
+env:
+  export MY_VAR: "value"  # 'export' is shell syntax, not YAML
+
+# ✅ Correct
+env:
+  MY_VAR: "value"
+```
+
+#### Mistake 2: Confusing Key-Value Syntax
+
+```yaml
+# ❌ Wrong: Equals sign in name
+env:
+  MY_VAR=value:  # Incorrect syntax
+
+# ✅ Correct
+env:
+  MY_VAR: "value"
+```
+
+#### Mistake 3: Quotes in Variable Names
+
+```yaml
+# ❌ Wrong: Quotes are part of the name
+env:
+  "MY_VAR": "value"  # Quotes become part of the name in some parsers
+
+# ✅ Correct
+env:
+  MY_VAR: "value"
+```
+
+### Relationship to Other Rules
+
+- **[expression]({{< ref "expressionrule.md" >}})**: Expression syntax in environment variable values
+- **[envvar-injection-critical]({{< ref "envvarinjectioncritical.md" >}})**: Untrusted input in environment variable values
+- **[envvar-injection-medium]({{< ref "envvarinjectionmedium.md" >}})**: Environment variable injection in normal triggers
+
+### Detection Example
+
+Running sisakulint on a workflow with invalid environment variable names:
+
+```bash
+$ sisakulint .github/workflows/ci.yml
+
+.github/workflows/ci.yml:5:3: Environment variable name '"MY VAR"' is not formatted correctly. Please ensure that it does not include characters such as '&', '=', or spaces, as these are not allowed in variable names. [env-var]
+     5 👈|  MY VAR: "value"
+
+.github/workflows/ci.yml:6:3: Environment variable name '"DB=HOST"' is not formatted correctly. Please ensure that it does not include characters such as '&', '=', or spaces, as these are not allowed in variable names. [env-var]
+     6 👈|  DB=HOST: "localhost"
+
+.github/workflows/ci.yml:7:3: Environment variable name '"API&KEY"' is not formatted correctly. Please ensure that it does not include characters such as '&', '=', or spaces, as these are not allowed in variable names. [env-var]
+     7 👈|  API&KEY: "secret"
+```
+
 ### References
 
 - [GitHub Docs: Environment Variables](https://docs.github.com/en/actions/learn-github-actions/environment-variables)
 - [GitHub Docs: Workflow Syntax - env](https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#env)
 - [POSIX Environment Variables](https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap08.html)
+
+### Testing
+
+To test this rule:
+
+```bash
+# Detect invalid environment variable names
+sisakulint .github/workflows/*.yml
+```
 
 ### Configuration
 
