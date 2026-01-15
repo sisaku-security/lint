@@ -107,7 +107,7 @@ $ sisakulint -fix on
 $ sisakulint -format "{{sarif .}}"
 ```
 
-## OWASP CI/CD Top 10 Coverage
+## OWASP Top 10 CI/CD Security Risks Coverage
 
 sisakulint implements detection rules aligned with the [OWASP Top 10 CI/CD Security Risks](https://owasp.org/www-project-top-10-ci-cd-security-risks/):
 
