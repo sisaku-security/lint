@@ -69,6 +69,19 @@ These vulnerabilities are frequently exploited in real-world attacks, making aut
 - **[improper-access-control rule]({{< ref "docs/rules/improperaccesscontrol.md" >}})** - Detects label-based approval bypass vulnerabilities
 - **[job-needs rule]({{< ref "docs/rules/jobneeds.md" >}})** - Job dependency validation
 - **[secret-exposure rule]({{< ref "docs/rules/secretexposure.md" >}})** - Excessive secrets exposure detection
+- **[unmasked-secret-exposure rule]({{< ref "docs/rules/unmaskedsecretexposure.md" >}})** - Detects unmasked secrets in logs
+- **[bot-conditions rule]({{< ref "docs/rules/botconditions.md" >}})** - Validates bot actor conditions in workflows
+- **[known-vulnerable-actions rule]({{< ref "docs/rules/knownvulnerableactions.md" >}})** - Detects actions with known vulnerabilities
+- **[archived-uses rule]({{< ref "docs/rules/archiveduses.md" >}})** - Detects usage of archived/deprecated actions
+- **[impostor-commit rule]({{< ref "docs/rules/impostorcommit.md" >}})** - Detects impostor commit attacks
+- **[ref-confusion rule]({{< ref "docs/rules/refconfusion.md" >}})** - Detects ref confusion vulnerabilities
+- **[unsound-contains rule]({{< ref "docs/rules/unsoundcontains.md" >}})** - Detects unsafe contains() usage in conditions
+- **[self-hosted-runners rule]({{< ref "docs/rules/selfhostedrunners.md" >}})** - Self-hosted runner security validation
+- **[unpinned-images rule]({{< ref "docs/rules/unpinnedimages.md" >}})** - Detects unpinned container images
+- **[artipacked rule]({{< ref "docs/rules/artipacked.md" >}})** - Detects artipacked vulnerability patterns
+- **[obfuscation rule]({{< ref "docs/rules/obfuscation.md" >}})** - Detects obfuscated code in workflows
+- **[untrusted-checkout-to-ctou-critical]({{< ref "docs/rules/untrustedcheckouttoctoucritical.md" >}})** - Critical TOCTOU vulnerabilities in checkout
+- **[untrusted-checkout-to-ctou-high]({{< ref "docs/rules/untrustedcheckouttoctouhigh.md" >}})** - High severity TOCTOU vulnerabilities in checkout
 
 ## Install
 
