@@ -107,17 +107,20 @@ $ sisakulint -fix on
 $ sisakulint -format "{{sarif .}}"
 ```
 
-## OWASP Top 10 CI/CD Security Risks Coverage
-
-sisakulint implements detection rules aligned with the [OWASP Top 10 CI/CD Security Risks](https://owasp.org/www-project-top-10-ci-cd-security-risks/):
+## OWASP CI/CD Top 10 Mapping
 
 | OWASP Risk | Description | sisakulint Rules |
 |------------|-------------|------------------|
-| **CICD-SEC-02** | Inadequate Identity and Access Management | [permissions]({{< ref "docs/rules/permissions.md" >}}), [secret-exposure]({{< ref "docs/rules/secretexposure.md" >}}) |
-| **CICD-SEC-04** | Poisoned Pipeline Execution (PPE) | [code-injection-critical]({{< ref "docs/rules/codeinjectioncritical.md" >}}), [code-injection-medium]({{< ref "docs/rules/codeinjectionmedium.md" >}}), [envvar-injection-critical]({{< ref "docs/rules/envvarinjectioncritical.md" >}}), [envvar-injection-medium]({{< ref "docs/rules/envvarinjectionmedium.md" >}}), [envpath-injection-critical]({{< ref "docs/rules/envpathinjectioncritical.md" >}}), [envpath-injection-medium]({{< ref "docs/rules/envpathinjectionmedium.md" >}}), [untrusted-checkout]({{< ref "docs/rules/untrustedcheckout.md" >}}), [improper-access-control]({{< ref "docs/rules/improperaccesscontrol.md" >}}) |
-| **CICD-SEC-06** | Insufficient Credential Hygiene | [credentials]({{< ref "docs/rules/credentialrules.md" >}}) |
-| **CICD-SEC-08** | Ungoverned Usage of 3rd Party Services | [action-list]({{< ref "docs/rules/actionlist.md" >}}), [commit-sha]({{< ref "docs/rules/commitSHARule.md" >}}) |
-| **CICD-SEC-09** | Improper Artifact Integrity Validation | [artifact-poisoning-critical]({{< ref "docs/rules/artifactpoisoningcritical.md" >}}), [artifact-poisoning-medium]({{< ref "docs/rules/artifactpoisoningmedium.md" >}}), [cache-poisoning]({{< ref "docs/rules/cachepoisoningrule.md" >}}), [cache-poisoning-poisonable-step]({{< ref "docs/rules/cachepoisoningpoisonablesteprule.md" >}}) |
+| CICD-SEC-01 | Insufficient Flow Control Mechanisms | improper-access-control, bot-conditions |
+| CICD-SEC-02 | Inadequate Identity and Access Management | permissions, secret-exposure, unmasked-secret-exposure |
+| CICD-SEC-03 | Dependency Chain Abuse | known-vulnerable-actions, archived-uses, impostor-commit, ref-confusion |
+| CICD-SEC-04 | Poisoned Pipeline Execution (PPE) | code-injection-*, envvar-injection-*, envpath-injection-*, untrusted-checkout-*, unsound-contains |
+| CICD-SEC-05 | Insufficient PBAC (Pipeline-Based Access Controls) | self-hosted-runners |
+| CICD-SEC-06 | Insufficient Credential Hygiene | credentials |
+| CICD-SEC-07 | Insecure System Configuration | timeout-minutes, deprecated-commands |
+| CICD-SEC-08 | Ungoverned Usage of 3rd Party Services | action-list, commit-sha, unpinned-images |
+| CICD-SEC-09 | Improper Artifact Integrity Validation | artifact-poisoning-*, cache-poisoning-*, artipacked |
+| CICD-SEC-10 | Insufficient Logging and Visibility | obfuscation |
 
 {{< popup_link2 href="https://owasp.org/www-project-top-10-ci-cd-security-risks/" >}}
 
