@@ -248,6 +248,7 @@ Enable both rules (default) to catch these patterns.
 
 - [CodeQL: Environment Variable Injection (Critical)](https://codeql.github.com/codeql-query-help/actions/actions-envvar-injection-critical/)
 - [GitHub Security: Script Injection](https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#understanding-the-risk-of-script-injections)
+- [GitHub Security Lab: Preventing pwn requests](https://securitylab.github.com/research/github-actions-preventing-pwn-requests/)
 - [OWASP: Command Injection](https://owasp.org/www-community/attacks/Command_Injection)
 - [OWASP Top 10 CI/CD Security Risks](https://owasp.org/www-project-top-10-ci-cd-security-risks/)
 

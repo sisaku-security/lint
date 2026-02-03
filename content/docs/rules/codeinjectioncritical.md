@@ -450,6 +450,7 @@ This rule has minimal performance impact:
 **Industry References:**
 - [CodeQL: Code Injection (Critical)](https://codeql.github.com/codeql-query-help/actions/actions-code-injection-critical/) - CodeQL's detection pattern
 - [GitHub: Security Hardening for GitHub Actions](https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions) - Official security guidance
+- [GitHub Security Lab: Preventing pwn requests](https://securitylab.github.com/research/github-actions-preventing-pwn-requests/) - Comprehensive guide to pwn request attacks
 - [OWASP: CICD-SEC-04 - PPE](https://owasp.org/www-project-top-10-ci-cd-security-risks/CICD-SEC-04-Poisoned-Pipeline-Execution) - Attack patterns
 - [CWE-94: Code Injection](https://cwe.mitre.org/data/definitions/94.html) - Vulnerability classification
 - [GitHub: Keeping Actions Secure](https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-third-party-actions) - Action security best practices
@@ -457,6 +458,8 @@ This rule has minimal performance impact:
 {{< popup_link2 href="https://codeql.github.com/codeql-query-help/actions/actions-code-injection-critical/" >}}
 
 {{< popup_link2 href="https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions" >}}
+
+{{< popup_link2 href="https://securitylab.github.com/research/github-actions-preventing-pwn-requests/" >}}
 
 {{< popup_link2 href="https://owasp.org/www-project-top-10-ci-cd-security-risks/CICD-SEC-04-Poisoned-Pipeline-Execution" >}}
 
