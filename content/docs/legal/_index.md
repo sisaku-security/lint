@@ -1,8 +1,8 @@
-+++
-title = 'Legal'
-date = 2025-12-28
-weight = 100
-+++
+---
+title: "Legal"
+weight: 100
+bookCollapseSection: true
+---
 
 # Legal Documents
 

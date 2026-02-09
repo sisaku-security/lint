@@ -1,6 +1,7 @@
 ---
 title: "Rules"
 weight: 1
+bookCollapseSection: true
 ---
 
 # sisakulint Rules
