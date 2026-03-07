@@ -128,40 +128,40 @@ Ground truth was determined by the author (Atsushi Sada). This dataset publishes
 
 ### Scan Report Classification Distribution
 
-```mermaid
+{{< mermaid >}}
 pie title Scan Report Classification (n≈220)
     "All TP" : 130
     "Mixed (TP+FP)" : 50
     "All/Majority FP" : 20
     "No triage / Non-scan" : 20
-```
+{{< /mermaid >}}
 
 ### FP Corrections by Rule Category
 
-```mermaid
+{{< mermaid >}}
 xychart-beta
     title "False Positive Corrections by Rule Category"
     x-axis ["impostor-commit", "parser", "cond/expr/code-inj", "credential", "artifact-poison", "cache-poison", "permissions", "toctou", "commit-sha"]
     y-axis "Number of Corrections" 0 --> 7
     bar [6, 4, 3, 3, 2, 2, 2, 1, 1]
-```
+{{< /mermaid >}}
 
 ### Self-Healing Timeline (Cumulative FP Corrections)
 
-```mermaid
+{{< mermaid >}}
 xychart-beta
     title "Cumulative FP Corrections Over Time"
     x-axis ["W1 (Jan 6)", "W2", "W3-4 (Jan 24)", "W5-6 (Feb 4)", "W6-7 (Feb 18)", "W8-9 (Mar 1)"]
     y-axis "Cumulative Corrections" 0 --> 27
     line [8, 8, 13, 19, 24, 27]
     bar [8, 0, 5, 6, 5, 3]
-```
+{{< /mermaid >}}
 
 *Bar = new FP findings per period. Line = cumulative total.*
 
 ### Self-Healing Pipeline Flow
 
-```mermaid
+{{< mermaid >}}
 flowchart LR
     A["sisakuintel-worker\nscans trending repo"] --> B{"Triage\ncomment"}
     B -->|All TP| C["TP findings\ndocumented in\nScan Report"]
@@ -181,16 +181,16 @@ flowchart LR
     style E fill:#d0021b,color:#fff
     style G fill:#7ed321,color:#fff
     style I fill:#7ed321,color:#fff
-```
+{{< /mermaid >}}
 
 ### Fix PR Outcome Distribution
 
-```mermaid
+{{< mermaid >}}
 pie title Fix PR Outcomes (18 total)
     "Bot PR Merged" : 15
     "Bot PR Open" : 1
     "Human PR (outside count)" : 2
-```
+{{< /mermaid >}}
 
 ---
 
