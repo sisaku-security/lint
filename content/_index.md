@@ -15,7 +15,7 @@ $ brew tap sisaku-security/homebrew-sisakulint
 $ brew install sisakulint
 ```
 
-{{< popup_link2 href="https://www.youtube.com/watch?v=DhgqKOmzLSk" >}}
+{{< youtube id="DhgqKOmzLSk" title="sisakulint Demo" >}}
 
 {{< popup_link2 href=https://github.com/sisaku-security/sisakulint >}}
 
