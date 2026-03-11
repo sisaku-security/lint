@@ -60,16 +60,29 @@ Affected projects include: PX4-Autopilot, vets-api, weaviate, harvester, nrwl/nx
 
 ---
 
-## How sisakulint Compares
+## Existing Tools and Their Limitations
 
-| Capability | actionlint | zizmor | sisakulint |
-|------------|:---:|:---:|:---:|
-| Security-focused rules | Limited | 24 | **52** |
-| Taint propagation | No | No | **Yes** |
-| Auto-fix | No | Limited | **38+** |
-| Supply chain detection | No | Limited | **CVSS 9.8** |
-| Multi-step analysis | No | No | **Yes** |
-| OWASP CI/CD Top 10 | No | Partial | **Full** |
+GitHub Actions has become the de facto CI/CD platform, yet the security tooling landscape remains fragmented. Each tool addresses a different slice of the problem — no single tool previously combined deep semantic analysis with deterministic auto-fix and supply chain coverage.
+
+| Capability | actionlint | zizmor | StepSecurity | Semgrep | GH Advanced Security | AI Security Agents* | **sisakulint** |
+|------------|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| Security-focused rules | Limited | 24 | N/A (runtime) | Yes | Yes | AI-based (no static rules) | **Yes (52 rules)** |
+| Taint propagation | No | No | No | Yes (Pro) | Yes | Partial | **Yes** |
+| Supply chain detection | No | Limited | No | Limited | Limited | Limited | **Yes (CVSS 9.8)** |
+| Multi-step analysis | No | No | No | Limited | Yes | Yes | **Yes** |
+| Auto-fix (target code) | No | No | N/A | Limited | Yes (Copilot Autofix) | Yes | **Yes (38+ rules)** |
+
+<small>*AI Security Agents: Claude Code Security (Anthropic, Feb 2026), Codex Security (OpenAI, Mar 2026). Both use AI-based detection — when a false positive occurs, there is no specific rule to trace or fix.</small>
+
+**actionlint** focuses on syntax validation and best practices. **zizmor** is security-focused but limited to single-step pattern matching. **StepSecurity** takes a complementary runtime hardening approach via network restrictions and permissions. **AI Security Agents** represent a new class of tool that excels at finding novel vulnerabilities but cannot participate in a deterministic, self-healing loop.
+
+### Two Levels of Automated Fixing
+
+It is important to distinguish two levels of automated fixing in security tooling:
+
+**Level 1: Target code autofix.** Systems like GitHub Copilot Autofix, SapFix, Getafix, and the newest AI agents (Claude Code Security, Codex Security) fix bugs in *application code* flagged by scanners. sisakulint itself has 38+ deterministic autofix rules at this level.
+
+**Level 2: Scanner self-correction.** Our system operates at a fundamentally different level: it fixes the *scanner's own detection rule logic*, not target code. When sisakulint produces a false positive, the orchestration system reads the semantic context of the target repository and delegates root cause analysis to an agentic AI. This creates a **self-healing loop** — each fix permanently improves the scanner's detection capability.
 
 ---
 
@@ -163,11 +176,11 @@ $ mv ./sisakulint /usr/local/bin/sisakulint
 ## Usage
 
 ```bash
-# Basic usage
+# Basic usage (scans .github/workflows/ in current directory)
 $ sisakulint
 
-# With debug output
-$ sisakulint -debug
+# Remote scan — scan any GitHub repository without cloning
+$ sisakulint -remote owner/repo
 
 # Auto-fix (dry-run to preview changes)
 $ sisakulint -fix dry-run
@@ -175,8 +188,11 @@ $ sisakulint -fix dry-run
 # Auto-fix (apply changes)
 $ sisakulint -fix on
 
-# SARIF output for reviewdog
+# SARIF output for reviewdog / GitHub Code Scanning
 $ sisakulint -format "{{sarif .}}"
+
+# With debug output
+$ sisakulint -debug
 ```
 
 ---
@@ -197,6 +213,25 @@ $ sisakulint -format "{{sarif .}}"
 | CICD-SEC-10 | Insufficient Logging and Visibility | - |
 
 {{< popup_link2 href="https://owasp.org/www-project-top-10-ci-cd-security-risks/" >}}
+
+---
+
+## FAQ
+
+**How is sisakulint different from actionlint?**
+actionlint is an excellent syntax and best-practice linter for GitHub Actions. sisakulint builds on that foundation with 52 security-focused rules, taint propagation across steps and jobs, and 38+ auto-fixes. If actionlint is a spell checker, sisakulint is a security auditor.
+
+**How is it different from zizmor?**
+zizmor performs single-step pattern matching. sisakulint tracks data flow across multiple steps, jobs, and reusable workflows via taint propagation — catching vulnerabilities that single-step analysis fundamentally cannot detect (e.g., TOCTOU in checkout-to-use chains, cross-job secret exfiltration).
+
+**Will it slow down my CI?**
+No. sisakulint is designed for CI/CD pipelines and completes in seconds even on large monorepo workflow files. SARIF output integrates directly with reviewdog and GitHub Code Scanning.
+
+**What about false positives?**
+sisakulint achieves 100% detection on GitHub Security Lab advisories with a low false positive rate. Our Level 2 self-correction system continuously improves rule precision — when a false positive is confirmed, the scanner's own detection logic is automatically fixed and regression-tested.
+
+**Can't AI agents (Claude Code Security, Codex Security) replace a static linter?**
+AI agents excel at finding novel, context-dependent vulnerabilities. However, they operate non-deterministically — when a false positive occurs, there is no specific rule to trace, debug, or fix. sisakulint provides deterministic, reproducible results with traceable rules, while our self-healing architecture bridges the gap by using AI to improve the rules themselves.
 
 ---
 
