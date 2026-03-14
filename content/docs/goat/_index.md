@@ -1,9 +1,10 @@
-+++
-title = 'github-actions-goat Verification Report'
-date = 2026-03-14T00:00:00+09:00
-draft = false
-weight = 100
-+++
+---
+title: 'github-actions-goat'
+date: 2026-03-14T00:00:00+09:00
+draft: false
+weight: 100
+bookCollapseSection: true
+---
 
 # github-actions-goat Verification Report
 
