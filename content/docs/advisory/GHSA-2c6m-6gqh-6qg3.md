@@ -195,3 +195,4 @@ The specific implementation details of the fix ensure that special characters in
 - [Pull Request #2108](https://github.com/actions/runner/pull/2108)
 - [actions/runner Repository](https://github.com/actions/runner)
 - [NVD: CVE-2022-39321](https://nvd.nist.gov/vuln/detail/CVE-2022-39321)
+- [sisakulint: EnvVarInjectionCriticalRule]({{< ref "../rules/envvarinjectioncritical.md" >}})

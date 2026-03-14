@@ -3,6 +3,11 @@ title: "Dangerous Triggers Rule (Medium)"
 weight: 46
 ---
 
+---
+title: "Dangerous Triggers Rule (Medium)"
+weight: 46
+---
+
 ### Dangerous Triggers Rule (Medium) Overview
 
 The `dangerous-triggers-medium` rule detects workflows using **privileged triggers** (pull_request_target, workflow_run, issue_comment, etc.) with **only partial security mitigations**. While some protections exist, additional mitigations are recommended for defense in depth.
@@ -60,7 +65,7 @@ jobs:
 ```bash
 $ sisakulint .github/workflows/process.yaml
 
-.github/workflows/process.yaml:3:3: dangerous trigger (medium): workflow uses privileged trigger(s) [pull_request_target] with partial mitigations (label condition). Consider adding more mitigations for defense in depth: restrict permissions (permissions: read-all), use environment protection, add label conditions, or check github.actor. See https://sisaku-security.github.io/lint/docs/rules/dangeroustriggersrulemedium/ [dangerous-triggers-medium]
+.github/workflows/process.yaml:3:3: dangerous trigger (medium): workflow uses privileged trigger(s) [pull_request_target] with partial mitigations (label condition). Consider adding more mitigations for defense in depth: restrict permissions (permissions: read-all), use environment protection, add label conditions, or check github.actor. See https://securitylab.github.com/research/github-actions-preventing-pwn-requests/ [dangerous-triggers-medium]
 ```
 
 ### How to Improve

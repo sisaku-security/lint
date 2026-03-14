@@ -1,58 +1,18 @@
 ---
 title: "Credentials Rule"
 weight: 1
-# bookFlatSection: false
-# bookToc: true
-# bookHidden: false
-# bookCollapseSection: false
-# bookComments: false
-# bookSearchExclude: false
+---
+
+---
+title: "Credentials Rule"
+weight: 1
 ---
 
 ### Credentials Rule Overview
 
 This rule detects hardcoded credentials in GitHub Actions workflows, specifically focusing on passwords within container and service definitions. Hardcoding sensitive information like passwords directly in workflow files is a critical security risk that can lead to credential exposure.
 
-#### Key Features:
-
-- **Container Password Detection**: Identifies hardcoded passwords in job container definitions
-- **Service Password Detection**: Identifies hardcoded passwords in service container credentials
-- **Expression Validation**: Recognizes GitHub Actions expressions (`${{ }}`) as safe patterns
-- **Auto-fix Support**: Automatically removes hardcoded password fields
-- **Zero False Negatives**: Does not flag secrets references or expression-based values
-
-### Security Impact
-
-**Severity: High (8/10)**
-
-Hardcoded credentials in workflow files pose significant security risks:
-
-1. **Version Control Exposure**: Credentials committed to version control are visible to anyone with repository access
-2. **Fork Exposure**: Forked repositories inherit hardcoded credentials
-3. **Log Exposure**: Hardcoded passwords may appear in CI/CD logs
-4. **Rotation Difficulty**: Changing hardcoded credentials requires code changes and redeployment
-
-This vulnerability is classified as **CWE-798: Use of Hard-coded Credentials** and **CWE-259: Use of Hard-coded Password**, and aligns with OWASP CI/CD Security Risk **CICD-SEC-6: Insufficient Credential Hygiene**.
-
-### Attack Scenario
-
-**How Hardcoded Credentials Lead to Supply Chain Compromise:**
-
-1. **Developer hardcodes password** in workflow file
-   - Password committed to repository history
-
-2. **Repository is forked or accessed** by unauthorized user
-   - Credentials are visible in workflow file (even in deleted commits)
-
-3. **Attacker uses credentials** to access container registry
-   - Pulls or pushes malicious container images
-
-4. **Supply chain compromise**
-   - Malicious images used in CI/CD pipeline affect downstream users
-
-### Example Vulnerable Workflow
-
-Consider this workflow with hardcoded container registry credentials:
+**Vulnerable Example:**
 
 ```yaml
 on: push
@@ -74,28 +34,78 @@ jobs:
       - run: echo 'hello'
 ```
 
-### Example Output
-
-Running sisakulint will detect hardcoded passwords in container and service definitions:
+**Detection Output:**
 
 ```bash
-$ sisakulint
-
-credentials.yaml:9:19: Password found in "Container" section, do not paste password direct hardcode [credentials]
+credentials.yaml:9:19: "Container" section: Password found in container section, do not paste password direct hardcode [credentials]
       9 👈|        password: "hardcodedPassword123"
 
-credentials.yaml:15:21: Password found in "Service" section for service redis, do not paste password direct hardcode [credentials]
+credentials.yaml:15:21: "Service" section for service redis: Password found in container section, do not paste password direct hardcode [credentials]
       15 👈|          password: "anotherHardcodedPassword456"
 ```
 
-### Detection Patterns
+### Security Background
 
-The rule checks the following locations for hardcoded passwords:
+#### Why is this dangerous?
 
-| Location | Description |
-|----------|-------------|
-| `jobs.<job_id>.container.credentials.password` | Job container credentials |
-| `jobs.<job_id>.services.<service_id>.credentials.password` | Service container credentials |
+Hardcoded credentials in workflow files pose significant security risks:
+
+1. **Version Control Exposure**: Credentials committed to version control are visible to anyone with repository access
+2. **Fork Exposure**: Forked repositories inherit hardcoded credentials
+3. **Log Exposure**: Hardcoded passwords may appear in CI/CD logs
+4. **Rotation Difficulty**: Changing hardcoded credentials requires code changes and redeployment
+
+#### Attack Scenario
+
+```
+1. Developer hardcodes password in workflow file
+   └── Password committed to repository
+
+2. Repository is forked or accessed by unauthorized user
+   └── Credentials are visible in workflow file
+
+3. Attacker uses credentials to access container registry
+   └── Pulls or pushes malicious container images
+
+4. Supply chain compromise
+   └── Malicious images used in CI/CD pipeline
+```
+
+#### OWASP and CWE Mapping
+
+- **CWE-798**: Use of Hard-coded Credentials
+- **CWE-259**: Use of Hard-coded Password
+- **OWASP CI/CD Security Risks**:
+  - **CICD-SEC-6**: Insufficient Credential Hygiene
+
+### Technical Detection Mechanism
+
+The rule analyzes YAML workflow files and checks container/service credential definitions:
+
+```go
+// Detection pattern
+var isExpr = regexp.MustCompile(`^\$\{.+\}$`)
+
+func (rule *CredentialRule) checkCredentials(where string, node *ast.Container) {
+    if node.Credentials != nil &&
+       node.Credentials.Password != nil &&
+       !isExpr.MatchString(node.Credentials.Password.Value) {
+        // Password is hardcoded - not a GitHub Actions expression
+        rule.Errorf(node.Credentials.Password.Pos,
+            "Password found in %s, do not paste password direct hardcode", where)
+    }
+}
+```
+
+### Detection Logic Explanation
+
+#### What the Rule Checks
+
+1. **Container Section**: Validates passwords in job container definitions
+2. **Service Definitions**: Validates passwords in service container credentials
+3. **Expression Detection**: Uses regex `^\$\{.+\}$` to identify GitHub Actions expressions
+
+#### Safe vs Hardcoded Patterns
 
 **Safe (will NOT trigger an error):**
 ```yaml
@@ -112,7 +122,41 @@ credentials:
   password: myPassword123    # Unquoted literal - unsafe
 ```
 
-### Auto-fix Support
+### Safe Patterns
+
+#### Pattern 1: Using GitHub Secrets (Recommended)
+
+```yaml
+on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    container:
+      image: "example.com/owner/image"
+      credentials:
+        username: ${{ secrets.REGISTRY_USERNAME }}
+        password: ${{ secrets.REGISTRY_PASSWORD }}  # Safe: Uses secrets
+    steps:
+      - run: echo 'hello'
+```
+
+#### Pattern 2: Using Environment Variables
+
+```yaml
+on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    container:
+      image: "example.com/owner/image"
+      credentials:
+        username: ${{ vars.REGISTRY_USERNAME }}
+        password: ${{ secrets.REGISTRY_PASSWORD }}  # Safe
+    steps:
+      - run: echo 'hello'
+```
+
+### Auto-Fix Support
 
 The credentials rule supports auto-fixing by removing the hardcoded password field:
 
@@ -143,40 +187,6 @@ container:
 ```
 
 **Note:** Auto-fix removes the password field entirely. You must manually add a proper secrets reference (`${{ secrets.PASSWORD }}`) after the fix.
-
-### Safe Patterns
-
-#### Pattern 1: Using GitHub Secrets (Recommended)
-
-```yaml
-on: push
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    container:
-      image: "example.com/owner/image"
-      credentials:
-        username: ${{ secrets.REGISTRY_USERNAME }}
-        password: ${{ secrets.REGISTRY_PASSWORD }}  # Safe: Uses secrets
-    steps:
-      - run: echo 'hello'
-```
-
-#### Pattern 2: Using Environment Variables with Secrets
-
-```yaml
-on: push
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    container:
-      image: "example.com/owner/image"
-      credentials:
-        username: ${{ vars.REGISTRY_USERNAME }}
-        password: ${{ secrets.REGISTRY_PASSWORD }}  # Safe
-    steps:
-      - run: echo 'hello'
-```
 
 ### Best Practices
 
@@ -216,27 +226,41 @@ jobs:
           DEPLOY_TOKEN: ${{ secrets.PRODUCTION_DEPLOY_TOKEN }}
 ```
 
-### Complementary Rules
+### Related Rules
 
-Use these rules together for defense in depth:
+- **[permissions]({{< ref "permissions.md" >}})**: Ensures workflows follow least-privilege principle
+- **[commit-sha]({{< ref "commitsharule.md" >}})**: Pins actions to prevent supply chain attacks
 
-1. **[permissions]({{< ref "permissions.md" >}})**: Ensures workflows follow least-privilege principle
-2. **[commit-sha]({{< ref "commitsharule.md" >}})**: Pins actions to prevent supply chain attacks
-3. **[secret-exposure]({{< ref "secretexposure.md" >}})**: Detects excessive secrets exposure patterns
+### References
 
-### See Also
-
-**Industry References:**
-- [GitHub Docs: Using Secrets in GitHub Actions](https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-secrets)
+#### GitHub Documentation
 - [GitHub Docs: Encrypted Secrets](https://docs.github.com/en/actions/security-guides/encrypted-secrets)
-- [CWE-798: Use of Hard-coded Credentials](https://cwe.mitre.org/data/definitions/798.html)
-- [CWE-259: Use of Hard-coded Password](https://cwe.mitre.org/data/definitions/259.html)
-- [OWASP Top 10 CI/CD Security Risks: CICD-SEC-6](https://owasp.org/www-project-top-10-ci-cd-security-risks/CICD-SEC-06-Insufficient-Credential-Hygiene)
+- [GitHub Docs: Using Secrets in GitHub Actions](https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-secrets)
 
-{{< popup_link2 href="https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-secrets" >}}
+#### Security Resources
+- [CWE-798: Use of Hard-coded Credentials](https://cwe.mitre.org/data/definitions/798.html)
+- [OWASP: Credential Management](https://owasp.org/www-community/attacks/Credential_stuffing)
 
 {{< popup_link2 href="https://docs.github.com/en/actions/security-guides/encrypted-secrets" >}}
 
 {{< popup_link2 href="https://cwe.mitre.org/data/definitions/798.html" >}}
 
-{{< popup_link2 href="https://owasp.org/www-project-top-10-ci-cd-security-risks/CICD-SEC-06-Insufficient-Credential-Hygiene" >}}
+### Testing
+
+To test this rule:
+
+```bash
+# Detect hardcoded credentials
+sisakulint .github/workflows/*.yml
+
+# Apply auto-fix
+sisakulint -fix on .github/workflows/*.yml
+```
+
+### Configuration
+
+This rule is enabled by default. To disable it:
+
+```bash
+sisakulint -ignore credentials
+```

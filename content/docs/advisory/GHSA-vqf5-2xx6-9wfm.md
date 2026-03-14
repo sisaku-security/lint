@@ -170,6 +170,10 @@ This vulnerability is **NOT detectable** by static analysis because:
 
 sisakulint implements **KnownVulnerableActionsRule** to detect vulnerable versions:
 
+```bash
+$ sisakulint script/actions/advisory/GHSA-vqf5-2xx6-9wfm-vulnerable.yaml
+```
+
 Actual output:
 ```
 script/actions/advisory/GHSA-vqf5-2xx6-9wfm-vulnerable.yaml:33:9: Action 'github/codeql-action/init@v3.26.11' has a known high severity vulnerability (GHSA-vqf5-2xx6-9wfm): GitHub PAT written to debug artifacts. Upgrade to version 3.28.3 or later. See: https://github.com/advisories/GHSA-vqf5-2xx6-9wfm [known-vulnerable-actions]

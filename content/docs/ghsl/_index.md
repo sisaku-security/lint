@@ -19,7 +19,7 @@ This document summarizes sisakulint's detection capability against GitHub Securi
 ## Detection Categories
 
 | Rule | Detections |
-|------|----------:|
+|------|-----------:|
 | code-injection-critical | 13 |
 | untrusted-checkout | 7 |
 | cache-poisoning-poisonable-step | 6 |
@@ -31,38 +31,38 @@ This document summarizes sisakulint's detection capability against GitHub Securi
 
 ### Code Injection Vulnerabilities
 
-| Advisory ID | Affected Component | Severity | Detected | Detection Rules |
+| Advisory ID | Affected Component | Severity | Detected | Detection Rules ||
 |-------------|-------------------|----------|----------|-----------------|
-| [GHSL-2024-326]({{< ref "GHSL-2024-326.md" >}}) | Actual | Critical | Yes | CodeInjectionCriticalRule, ArgumentInjectionCriticalRule |
-| [GHSL-2025-087]({{< ref "GHSL-2025-087.md" >}}) | PX4-Autopilot | Critical | Yes | CodeInjectionCriticalRule |
-| [GHSL-2025-089]({{< ref "GHSL-2025-089.md" >}}) | YDB | Critical | Yes | CodeInjectionCriticalRule |
-| [GHSL-2025-090]({{< ref "GHSL-2025-090.md" >}}) | harvester | Critical | Yes | CodeInjectionCriticalRule |
-| [GHSL-2025-091]({{< ref "GHSL-2025-091.md" >}}) | pymapdl | Critical | Yes | CodeInjectionCriticalRule |
-| [GHSL-2025-099]({{< ref "GHSL-2025-099.md" >}}) | cross-platform-actions | Critical | Yes | CodeInjectionCriticalRule |
-| [GHSL-2025-101]({{< ref "GHSL-2025-101.md" >}}) | homeassistant-tapo-control | Critical | Yes | CodeInjectionCriticalRule |
-| [GHSL-2025-102]({{< ref "GHSL-2025-102.md" >}}) | acl-anthology | Critical | Yes | CodeInjectionCriticalRule |
-| [GHSL-2025-103]({{< ref "GHSL-2025-103.md" >}}) | acl-anthology | Critical | Yes | CodeInjectionCriticalRule |
-| [GHSL-2025-104]({{< ref "GHSL-2025-104.md" >}}) | weaviate | Critical | Yes | CodeInjectionCriticalRule, DangerousTriggersRule |
-| [GHSL-2025-105]({{< ref "GHSL-2025-105.md" >}}) | vets-api | Critical | Yes | CodeInjectionCriticalRule, OutputClobberingCriticalRule |
-| [GHSL-2025-106]({{< ref "GHSL-2025-106.md" >}}) | esphome-docs | Critical | Yes | CodeInjectionCriticalRule |
-| [GHSL-2025-111]({{< ref "GHSL-2025-111.md" >}}) | nrwl/nx | High | Yes | UntrustedCheckoutRule, CodeInjectionCriticalRule |
+| [GHSL-2024-326]({{< ref "GHSL-2024-326.md" >}}) | Actual | Critical | Yes | CodeInjectionCriticalRule, ArgumentInjectionCriticalRule ||
+| [GHSL-2025-087]({{< ref "GHSL-2025-087.md" >}}) | PX4-Autopilot | Critical | Yes | CodeInjectionCriticalRule ||
+| [GHSL-2025-089]({{< ref "GHSL-2025-089.md" >}}) | YDB | Critical | Yes | CodeInjectionCriticalRule ||
+| [GHSL-2025-090]({{< ref "GHSL-2025-090.md" >}}) | harvester | Critical | Yes | CodeInjectionCriticalRule ||
+| [GHSL-2025-091]({{< ref "GHSL-2025-091.md" >}}) | pymapdl | Critical | Yes | CodeInjectionCriticalRule ||
+| [GHSL-2025-099]({{< ref "GHSL-2025-099.md" >}}) | cross-platform-actions | Critical | Yes | CodeInjectionCriticalRule ||
+| [GHSL-2025-101]({{< ref "GHSL-2025-101.md" >}}) | homeassistant-tapo-control | Critical | Yes | CodeInjectionCriticalRule ||
+| [GHSL-2025-102]({{< ref "GHSL-2025-102.md" >}}) | acl-anthology | Critical | Yes | CodeInjectionCriticalRule ||
+| [GHSL-2025-103]({{< ref "GHSL-2025-103.md" >}}) | acl-anthology | Critical | Yes | CodeInjectionCriticalRule ||
+| [GHSL-2025-104]({{< ref "GHSL-2025-104.md" >}}) | weaviate | Critical | Yes | CodeInjectionCriticalRule, DangerousTriggersRule ||
+| [GHSL-2025-105]({{< ref "GHSL-2025-105.md" >}}) | vets-api | Critical | Yes | CodeInjectionCriticalRule, OutputClobberingCriticalRule ||
+| [GHSL-2025-106]({{< ref "GHSL-2025-106.md" >}}) | esphome-docs | Critical | Yes | CodeInjectionCriticalRule ||
+| [GHSL-2025-111]({{< ref "GHSL-2025-111.md" >}}) | nrwl/nx | High | Yes | UntrustedCheckoutRule, CodeInjectionCriticalRule ||
 
 ### Untrusted Code Execution Vulnerabilities
 
-| Advisory ID | Affected Component | Severity | Detected | Detection Rules |
+| Advisory ID | Affected Component | Severity | Detected | Detection Rules ||
 |-------------|-------------------|----------|----------|-----------------|
-| [GHSL-2024-325]({{< ref "GHSL-2024-325.md" >}}) | Actual | Critical | Yes | CachePoisoningPoisonableStepRule, DangerousTriggersRule |
-| [GHSL-2025-006]({{< ref "GHSL-2025-006.md" >}}) | homeassistant-powercalc | Critical | Yes | UntrustedCheckoutRule, CachePoisoningPoisonableStepRule |
-| [GHSL-2025-077]({{< ref "GHSL-2025-077.md" >}}) | beeware | Critical | Yes | UntrustedCheckoutRule, CachePoisoningPoisonableStepRule |
-| [GHSL-2025-082]({{< ref "GHSL-2025-082.md" >}}) | ag-grid | Critical | Yes | UntrustedCheckoutRule, CachePoisoningPoisonableStepRule |
-| [GHSL-2025-084]({{< ref "GHSL-2025-084.md" >}}) | datadog-actions-metrics | Critical | Yes | UntrustedCheckoutRule |
-| [GHSL-2025-094]({{< ref "GHSL-2025-094.md" >}}) | faststream | Critical | Yes | UntrustedCheckoutRule, CachePoisoningPoisonableStepRule |
+| [GHSL-2024-325]({{< ref "GHSL-2024-325.md" >}}) | Actual | Critical | Yes | CachePoisoningPoisonableStepRule, DangerousTriggersRule ||
+| [GHSL-2025-006]({{< ref "GHSL-2025-006.md" >}}) | homeassistant-powercalc | Critical | Yes | UntrustedCheckoutRule, CachePoisoningPoisonableStepRule ||
+| [GHSL-2025-077]({{< ref "GHSL-2025-077.md" >}}) | beeware | Critical | Yes | UntrustedCheckoutRule, CachePoisoningPoisonableStepRule ||
+| [GHSL-2025-082]({{< ref "GHSL-2025-082.md" >}}) | ag-grid | Critical | Yes | UntrustedCheckoutRule, CachePoisoningPoisonableStepRule ||
+| [GHSL-2025-084]({{< ref "GHSL-2025-084.md" >}}) | datadog-actions-metrics | Critical | Yes | UntrustedCheckoutRule ||
+| [GHSL-2025-094]({{< ref "GHSL-2025-094.md" >}}) | faststream | Critical | Yes | UntrustedCheckoutRule, CachePoisoningPoisonableStepRule ||
 
 ### TOCTOU / Approval Bypass Vulnerabilities
 
-| Advisory ID | Affected Component | Severity | Detected | Detection Rules |
+| Advisory ID | Affected Component | Severity | Detected | Detection Rules ||
 |-------------|-------------------|----------|----------|-----------------|
-| [GHSL-2025-038]({{< ref "GHSL-2025-038.md" >}}) | github/branch-deploy | High | Yes | CachePoisoningPoisonableStepRule |
+| [GHSL-2025-038]({{< ref "GHSL-2025-038.md" >}}) | github/branch-deploy | High | Yes | CachePoisoningPoisonableStepRule ||
 
 ## Key Findings
 
@@ -94,6 +94,41 @@ sisakulint implements sophisticated taint tracking to detect indirect code injec
 1. **Direct Context Tracking**: Identifies untrusted GitHub context variables
 2. **Action Output Tracking**: Tracks taint through known actions (e.g., `xt0rted/pull-request-comment-branch`)
 3. **Step Output Propagation**: Follows taint through `actions/github-script` outputs
+
+## Running Verification
+
+```bash
+# Build sisakulint
+go build ./cmd/sisakulint
+
+# Test all GHSL patterns
+./sisakulint script/actions/ghsl/
+
+# Test GHSL-2024 advisories
+./sisakulint script/actions/ghsl/ghsl-2024-325-326.yaml
+./sisakulint script/actions/ghsl/ghsl-2024-326-direct.yaml
+./sisakulint script/actions/ghsl/ghsl-2024-326-known-action.yaml
+
+# Test GHSL-2025 advisories
+./sisakulint script/actions/ghsl/ghsl-2025-006.yaml   # homeassistant-powercalc
+./sisakulint script/actions/ghsl/ghsl-2025-038.yaml   # branch-deploy TOCTOU
+./sisakulint script/actions/ghsl/ghsl-2025-077.yaml   # beeware
+./sisakulint script/actions/ghsl/ghsl-2025-082.yaml   # ag-grid
+./sisakulint script/actions/ghsl/ghsl-2025-084.yaml   # datadog-actions-metrics
+./sisakulint script/actions/ghsl/ghsl-2025-087.yaml   # PX4-Autopilot
+./sisakulint script/actions/ghsl/ghsl-2025-089.yaml   # YDB
+./sisakulint script/actions/ghsl/ghsl-2025-090.yaml   # harvester
+./sisakulint script/actions/ghsl/ghsl-2025-091.yaml   # pymapdl
+./sisakulint script/actions/ghsl/ghsl-2025-094.yaml   # faststream
+./sisakulint script/actions/ghsl/ghsl-2025-099.yaml   # cross-platform-actions
+./sisakulint script/actions/ghsl/ghsl-2025-101.yaml   # homeassistant-tapo-control
+./sisakulint script/actions/ghsl/ghsl-2025-102.yaml   # acl-anthology (link-to-checklist)
+./sisakulint script/actions/ghsl/ghsl-2025-103.yaml   # acl-anthology (print-info)
+./sisakulint script/actions/ghsl/ghsl-2025-104.yaml   # weaviate
+./sisakulint script/actions/ghsl/ghsl-2025-105.yaml   # vets-api
+./sisakulint script/actions/ghsl/ghsl-2025-106.yaml   # esphome-docs
+./sisakulint script/actions/ghsl/ghsl-2025-111.yaml   # nrwl/nx
+```
 
 ## Common Vulnerability Patterns
 

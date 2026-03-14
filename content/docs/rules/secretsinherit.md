@@ -3,6 +3,17 @@ title: "Secrets Inherit Rule"
 weight: 1
 ---
 
+---
+title: "Secrets Inherit Rule"
+weight: 1
+# bookFlatSection: false
+# bookToc: true
+# bookHidden: false
+# bookCollapseSection: false
+# bookComments: false
+# bookSearchExclude: false
+---
+
 ### Secrets Inherit Rule Overview
 
 This rule detects excessive secret inheritance using `secrets: inherit` in reusable workflow calls. Using `secrets: inherit` violates the Principle of Least Authority by passing all repository and organization secrets to the called workflow instead of explicitly specifying only the required ones.
@@ -187,3 +198,9 @@ This rule addresses **CICD-SEC-2: Inadequate Identity and Access Management** by
 - [GitHub Docs: Passing secrets to nested workflows](https://docs.github.com/en/actions/using-workflows/reusing-workflows#passing-secrets-to-nested-workflows)
 - [GitHub Docs: Using secrets in a workflow](https://docs.github.com/en/actions/security-guides/using-secrets-in-github-actions)
 - [OWASP CI/CD Top 10: CICD-SEC-2](https://owasp.org/www-project-top-10-ci-cd-security-risks/CICD-SEC-02-Inadequate-Identity-And-Access-Management)
+
+{{< popup_link2 href="https://docs.zizmor.sh/audits/#secrets-inherit" >}}
+
+{{< popup_link2 href="https://docs.github.com/en/actions/using-workflows/reusing-workflows#passing-secrets-to-nested-workflows" >}}
+
+{{< popup_link2 href="https://owasp.org/www-project-top-10-ci-cd-security-risks/CICD-SEC-02-Inadequate-Identity-And-Access-Management" >}}

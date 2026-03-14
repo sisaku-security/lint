@@ -1,6 +1,11 @@
 ---
 title: "PATH Injection Rule (Critical)"
 weight: 10
+---
+
+---
+title: "PATH Injection Rule (Critical)"
+weight: 10
 # bookFlatSection: false
 # bookToc: true
 # bookHidden: false
@@ -213,7 +218,6 @@ PATH injection in privileged workflows can lead to:
 
 - [CodeQL: PATH Injection (Critical)](https://codeql.github.com/codeql-query-help/actions/actions-envpath-injection-critical/)
 - [GitHub Security: Script Injection](https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#understanding-the-risk-of-script-injections)
-- [GitHub Security Lab: Preventing pwn requests](https://securitylab.github.com/research/github-actions-preventing-pwn-requests/)
 - [OWASP: Uncontrolled Search Path Element](https://cwe.mitre.org/data/definitions/427.html)
 - [OWASP Top 10 CI/CD Security Risks](https://owasp.org/www-project-top-10-ci-cd-security-risks/)
 
