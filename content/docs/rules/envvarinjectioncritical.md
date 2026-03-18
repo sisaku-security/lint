@@ -1,17 +1,7 @@
 ---
 title: "Environment Variable Injection Rule (Critical)"
 weight: 10
----
-
----
-title: "Environment Variable Injection Rule (Critical)"
-weight: 10
-# bookFlatSection: false
-# bookToc: true
-# bookHidden: false
-# bookCollapseSection: false
-# bookComments: false
-# bookSearchExclude: false
+bookToc: true
 ---
 
 ### Environment Variable Injection Rule (Critical) Overview

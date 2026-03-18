@@ -1,17 +1,7 @@
 ---
 title: "PATH Injection Rule (Critical)"
 weight: 10
----
-
----
-title: "PATH Injection Rule (Critical)"
-weight: 10
-# bookFlatSection: false
-# bookToc: true
-# bookHidden: false
-# bookCollapseSection: false
-# bookComments: false
-# bookSearchExclude: false
+bookToc: true
 ---
 
 ### PATH Injection Rule (Critical) Overview

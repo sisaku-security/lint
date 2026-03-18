@@ -1,11 +1,7 @@
 ---
 title: "Credentials Rule"
 weight: 1
----
-
----
-title: "Credentials Rule"
-weight: 1
+bookToc: true
 ---
 
 ### Credentials Rule Overview

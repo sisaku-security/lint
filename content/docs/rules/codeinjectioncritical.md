@@ -1,17 +1,7 @@
 ---
 title: "Code Injection Rule (Critical)"
 weight: 9
----
-
----
-title: "Code Injection Rule (Critical)"
-weight: 9
-# bookFlatSection: false
-# bookToc: true
-# bookHidden: false
-# bookCollapseSection: false
-# bookComments: false
-# bookSearchExclude: false
+bookToc: true
 ---
 
 ### Code Injection Rule (Critical) Overview

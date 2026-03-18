@@ -1,11 +1,7 @@
 ---
 title: "Impostor Commit Rule"
 weight: 1
----
-
----
-title: "Impostor Commit Rule"
-weight: 1
+bookToc: true
 ---
 
 ### Impostor Commit Rule Overview

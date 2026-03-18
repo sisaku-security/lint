@@ -1,11 +1,7 @@
 ---
 title: "Dangerous Triggers Rule (Medium)"
 weight: 46
----
-
----
-title: "Dangerous Triggers Rule (Medium)"
-weight: 46
+bookToc: true
 ---
 
 ### Dangerous Triggers Rule (Medium) Overview
