@@ -207,17 +207,17 @@ $ sisakulint -debug
 ## OWASP CI/CD Top 10 Mapping
 
 | OWASP Risk | Description | sisakulint Rules |
-|------------|-------------|------------------|
-| CICD-SEC-01 | Insufficient Flow Control Mechanisms | improper-access-control, bot-conditions, unsound-contains, dangerous-triggers-* |
-| CICD-SEC-02 | Inadequate Identity and Access Management | permissions, secret-exposure, unmasked-secret-exposure, secrets-inherit, ai-action-unrestricted-trigger |
+|:-----------|:------------|:-----------------|
+| CICD-SEC-01 | Insufficient Flow Control Mechanisms | improper-access-control, bot-conditions, unsound-contains, ai-action-unrestricted-trigger |
+| CICD-SEC-02 | Inadequate Identity and Access Management | permissions |
 | CICD-SEC-03 | Dependency Chain Abuse | known-vulnerable-actions, archived-uses, impostor-commit, ref-confusion, reusable-workflow-taint |
-| CICD-SEC-04 | Poisoned Pipeline Execution (PPE) | code-injection-*, envvar-injection-*, envpath-injection-*, output-clobbering-*, argument-injection-*, untrusted-checkout-* |
-| CICD-SEC-05 | Insufficient PBAC (Pipeline-Based Access Controls) | self-hosted-runners |
-| CICD-SEC-06 | Insufficient Credential Hygiene | credentials, artipacked, secrets-in-artifacts, secret-exfiltration, ai-action-excessive-tools, ai-action-prompt-injection |
+| CICD-SEC-04 | Poisoned Pipeline Execution (PPE) | dangerous-triggers-\*, code-injection-\*, envvar-injection-\*, envpath-injection-\*, output-clobbering-\*, argument-injection-\*, untrusted-checkout-\*, request-forgery-\*, ai-action-prompt-injection |
+| CICD-SEC-05 | Insufficient PBAC | self-hosted-runners, ai-action-excessive-tools |
+| CICD-SEC-06 | Insufficient Credential Hygiene | credentials, artipacked, secrets-in-artifacts, secret-exfiltration, secret-exposure, unmasked-secret-exposure, secrets-inherit |
 | CICD-SEC-07 | Insecure System Configuration | timeout-minutes, deprecated-commands, cache-bloat |
 | CICD-SEC-08 | Ungoverned Usage of 3rd Party Services | action-list, commit-sha, unpinned-images |
-| CICD-SEC-09 | Improper Artifact Integrity Validation | artifact-poisoning-*, cache-poisoning-* |
-| CICD-SEC-10 | Insufficient Logging and Visibility | obfuscation, request-forgery-* |
+| CICD-SEC-09 | Improper Artifact Integrity Validation | artifact-poisoning-\*, cache-poisoning-\* |
+| CICD-SEC-10 | Insufficient Logging and Visibility | obfuscation |
 
 {{< popup_link2 href="https://owasp.org/www-project-top-10-ci-cd-security-risks/" >}}
 
