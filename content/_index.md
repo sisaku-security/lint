@@ -96,6 +96,8 @@ It is important to distinguish two levels of automated fixing in security toolin
 - **[envvar-injection-medium]({{< ref "docs/rules/envvarinjectionmedium.md" >}})** - Environment variable injection in normal triggers
 - **[envpath-injection-critical]({{< ref "docs/rules/envpathinjectioncritical.md" >}})** - PATH injection in privileged triggers
 - **[envpath-injection-medium]({{< ref "docs/rules/envpathinjectionmedium.md" >}})** - PATH injection in normal triggers
+- **[container-env-injection-critical]({{< ref "docs/rules/containerenvinjectioncritical.md" >}})** - Container environment variable pollution in privileged triggers (LD_PRELOAD, BASH_ENV, PATH)
+- **[container-env-injection-medium]({{< ref "docs/rules/containerenvinjectionmedium.md" >}})** - Container environment variable pollution in normal triggers
 - **[argument-injection rule]({{< ref "docs/rules/argumentinjection.md" >}})** - Detects command-line argument injection
 - **[output-clobbering rule]({{< ref "docs/rules/outputclobbering.md" >}})** - Detects output clobbering vulnerabilities via $GITHUB_OUTPUT
 - **[unsound-contains rule]({{< ref "docs/rules/unsoundcontains.md" >}})** - Detects unsafe contains() usage in conditions
@@ -110,6 +112,7 @@ It is important to distinguish two levels of automated fixing in security toolin
 - **[ref-confusion rule]({{< ref "docs/rules/refconfusion.md" >}})** - Detects ref confusion vulnerabilities
 - **[unpinned-images rule]({{< ref "docs/rules/unpinnedimages.md" >}})** - Detects unpinned container images
 - **[action-list rule]({{< ref "docs/rules/actionlist.md" >}})** - Action allowlist/blocklist enforcement
+- **[dependabot-github-actions rule]({{< ref "docs/rules/dependabotgithubactions.md" >}})** - Checks Dependabot configuration for GitHub Actions ecosystem
 
 ### Credential & Secret Protection
 
@@ -211,11 +214,11 @@ $ sisakulint -debug
 | CICD-SEC-01 | Insufficient Flow Control Mechanisms | improper-access-control, bot-conditions, unsound-contains, ai-action-unrestricted-trigger |
 | CICD-SEC-02 | Inadequate Identity and Access Management | permissions |
 | CICD-SEC-03 | Dependency Chain Abuse | known-vulnerable-actions, archived-uses, impostor-commit, ref-confusion, reusable-workflow-taint |
-| CICD-SEC-04 | Poisoned Pipeline Execution (PPE) | dangerous-triggers-\*, code-injection-\*, envvar-injection-\*, envpath-injection-\*, output-clobbering-\*, argument-injection-\*, untrusted-checkout-\*, request-forgery-\*, ai-action-prompt-injection |
+| CICD-SEC-04 | Poisoned Pipeline Execution (PPE) | dangerous-triggers-\*, code-injection-\*, envvar-injection-\*, envpath-injection-\*, container-env-injection-\*, output-clobbering-\*, argument-injection-\*, untrusted-checkout-\*, request-forgery-\*, ai-action-prompt-injection |
 | CICD-SEC-05 | Insufficient PBAC | self-hosted-runners, ai-action-excessive-tools |
 | CICD-SEC-06 | Insufficient Credential Hygiene | credentials, artipacked, secrets-in-artifacts, secret-exfiltration, secret-exposure, unmasked-secret-exposure, secrets-inherit |
 | CICD-SEC-07 | Insecure System Configuration | timeout-minutes, deprecated-commands, cache-bloat |
-| CICD-SEC-08 | Ungoverned Usage of 3rd Party Services | action-list, commit-sha, unpinned-images |
+| CICD-SEC-08 | Ungoverned Usage of 3rd Party Services | action-list, commit-sha, unpinned-images, dependabot-github-actions |
 | CICD-SEC-09 | Improper Artifact Integrity Validation | artifact-poisoning-\*, cache-poisoning-\* |
 | CICD-SEC-10 | Insufficient Logging and Visibility | obfuscation |
 
