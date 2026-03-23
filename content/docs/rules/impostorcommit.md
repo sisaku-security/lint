@@ -54,7 +54,7 @@ GitHub's fork network allows any commit from any fork to be referenced by its SH
 | **Secrets Access** | Malicious code runs with full access to repository secrets |
 | **Persistence** | Once merged, the attack persists in the repository |
 
-#### Real-World Attack Scenario
+#### Real-World Attack Scenario 1: Fork-Based Impostor Commit
 
 ```yaml
 # Attacker sends a "helpful" PR to improve security by pinning to SHA
@@ -78,6 +78,26 @@ The attacker's modified `actions/checkout` could:
 - Inject backdoors into build artifacts
 - Steal deployment credentials
 
+#### Real-World Attack Scenario 2: Fake Tag Attack (Trivy Compromise, 2026/03)
+
+In March 2026, the Trivy repository was compromised through a fake tag attack:
+
+1. **Attacker obtained write access** to the repository via a stolen PAT (Personal Access Token)
+2. **Created a fake tag** (`v0.69.4`) pointing to a malicious commit in the fork network
+3. **The tag appeared legitimate** because it existed in the repository's tag list
+4. **Previous detection logic failed** because it treated "tag exists = legitimate commit"
+
+sisakulint now detects this pattern by verifying that tagged commits are **reachable from the default branch**, not just that a tag exists. A tag pointing to a fork commit that is not an ancestor of `main` is flagged as an impostor.
+
+```yaml
+# Even though v0.69.4 tag exists, the commit it points to is from a fork
+- uses: aquasecurity/trivy-action@<fake-tag-sha>  # DETECTED as impostor
+```
+
+**Key improvement**: The auto-fix now excludes fake tags when suggesting replacements, ensuring that `sisakulint -fix on` never proposes a malicious tag's SHA as the replacement.
+
+ref: [Trivy Compromise Analysis](https://diary.shift-js.info/trivy-compromise/)
+
 #### OWASP and CWE Mapping
 
 - **CWE-829:** Inclusion of Functionality from Untrusted Control Sphere
@@ -90,14 +110,19 @@ The attacker's modified `actions/checkout` could:
 
 The rule implements a 5-stage verification pipeline. Each stage is an independent check; if a stage confirms the commit is legitimate, verification stops immediately. All API failure paths **fail open** (i.e., assume legitimate) to avoid false positives.
 
-**Stage 1: Fast Path — Tag Tips**
+**Stage 1: Fast Path — Tag Tips (with Fake Tag Protection)**
 
 Fetches up to 500 tags (5 pages × 100) via `getTags()` and compares each tag's HEAD SHA against the target. Also records the latest semver tag for auto-fix suggestions.
+
+**Important (since PR #402):** A tag match alone no longer clears the commit as legitimate. Even if the target SHA matches a tag, the rule proceeds to verify that the commit is **reachable from the default branch** (Stage 4). This prevents fake tags — tags created by an attacker pointing to fork commits — from bypassing detection. The auto-fix logic also excludes tags whose commits are not reachable from the default branch, ensuring fake tags are never suggested as replacements.
 
 ```go
 tags := rule.getTags(ctx, client, owner, repo)
 for _, tag := range tags {
-    if tag.GetCommit().GetSHA() == sha { return legitimate }
+    if tag.GetCommit().GetSHA() == sha {
+        // Tag match found, but must still verify reachability
+        // to defend against fake tag attacks (Trivy 2026/03)
+    }
 }
 ```
 

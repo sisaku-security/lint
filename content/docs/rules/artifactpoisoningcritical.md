@@ -17,6 +17,7 @@ This rule detects unsafe artifact download practices that may allow artifact poi
 
 - **Artifact Download Detection**: Identifies uses of `actions/download-artifact` without proper path isolation
 - **Extraction Path Validation**: Ensures artifacts are extracted to safe, isolated locations
+- **OS-Aware Path Analysis**: Detects runner OS from `runs-on` labels and applies OS-specific path safety rules
 - **Auto-fix Support**: Automatically configures safe extraction paths using `${{ runner.temp }}/artifacts`
 - **Supply Chain Protection**: Prevents malicious artifacts from compromising the build environment
 
@@ -294,6 +295,56 @@ steps:
 ```
 
 **Mitigation**: Use unique artifact names with workflow/run IDs, validate sources
+
+### OS-Aware Path Validation
+
+The rule infers the runner OS from `runs-on` labels and applies OS-specific path safety rules. This prevents false positives (e.g., flagging `/tmp/` as unsafe on Linux) and catches OS-specific risks (e.g., allowing `C:\` paths on Linux).
+
+#### OS Detection
+
+| `runs-on` Label | Detected OS |
+|-----------------|-------------|
+| `ubuntu-*`, `ubuntu-latest` | linux |
+| `windows-*`, `windows-latest` | windows |
+| `macos-*`, `macos-latest` | macos |
+| Matrix expressions, self-hosted (no OS label) | unknown |
+
+#### Path Safety by OS
+
+| Path | Linux/macOS | Windows | Unknown OS |
+|------|:-----------:|:-------:|:----------:|
+| `${{ runner.temp }}/...` | Safe | Safe | Safe |
+| `/tmp/...` | Safe | Unsafe | Safe |
+| Other Unix paths (`/var/...`) | Safe | Unsafe | Unsafe |
+| Windows paths (`C:\...`, `D:/...`) | Unsafe | Safe | Unsafe |
+
+When the OS is unknown (e.g., matrix expressions or self-hosted runners without OS labels), the rule applies a conservative policy where only `${{ runner.temp }}` and `/tmp` are considered safe.
+
+#### Example: Cross-Platform Workflow
+
+```yaml
+jobs:
+  deploy-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: /tmp/artifacts  # Safe on Linux
+
+  deploy-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: /tmp/artifacts  # UNSAFE on Windows - flagged!
+
+  deploy-matrix:
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: ${{ runner.temp }}/artifacts  # Safe on all OSes
+```
 
 ### Detection Patterns
 

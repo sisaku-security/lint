@@ -1,12 +1,12 @@
 +++
-title = 'sisakulint Document'
+title = 'sisakulint'
 date = 2024-10-06T02:14:29+09:00
 draft = false
 +++
 
 # Find and auto-fix security vulnerabilities in GitHub Actions
 
-**52 security rules. 38+ auto-fixes. Taint propagation. 100% detection on GitHub Security Lab advisories.**
+**54 security rules. 38+ auto-fixes. Taint propagation. 100% detection on GitHub Security Lab advisories.**
 
 {{< figure src="https://github.com/sisaku-security/homebrew-sisakulint/assets/67861004/e9801cbb-fbe1-4822-a5cd-d1daac33e90f" alt="sisakulint logo" width="300px" >}}
 
@@ -66,7 +66,7 @@ GitHub Actions has become the de facto CI/CD platform, yet the security tooling 
 
 | Capability | actionlint | zizmor | StepSecurity | Semgrep | GH Advanced Security | AI Security Agents* | **sisakulint** |
 |------------|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| Security-focused rules | Limited | 24 | N/A (runtime) | Yes | Yes | AI-based (no static rules) | **Yes (52 rules)** |
+| Security-focused rules | Limited | 24 | N/A (runtime) | Yes | Yes | AI-based (no static rules) | **Yes (54 rules)** |
 | Taint propagation | No | No | No | Yes (Pro) | Yes | Partial | **Yes** |
 | Supply chain detection | No | Limited | No | Limited | Limited | Limited | **Yes (CVSS 9.8)** |
 | Multi-step analysis | No | No | No | Limited | Yes | Yes | **Yes** |
@@ -86,7 +86,7 @@ It is important to distinguish two levels of automated fixing in security toolin
 
 ---
 
-## Security Rules (52 rules)
+## Security Rules (54 rules)
 
 ### Code Injection & Expression Safety
 
@@ -142,6 +142,12 @@ It is important to distinguish two levels of automated fixing in security toolin
 - **[self-hosted-runners rule]({{< ref "docs/rules/selfhostedrunners.md" >}})** - Self-hosted runner security validation
 - **[request-forgery rule]({{< ref "docs/rules/requestforgery.md" >}})** - Detects SSRF vulnerabilities in workflows
 
+### AI Agent Security
+
+- **[ai-action-unrestricted-trigger rule]({{< ref "docs/rules/aiactionunrestrictedtrigger.md" >}})** - Detects AI actions allowing any user to trigger execution
+- **[ai-action-excessive-tools rule]({{< ref "docs/rules/aiactionexcessivetools.md" >}})** - Detects dangerous tool grants to AI agents in untrusted triggers
+- **[ai-action-prompt-injection rule]({{< ref "docs/rules/aiactionpromptinjection.md" >}})** - Detects untrusted input interpolated into AI agent prompts
+
 ### Workflow Quality & Best Practices
 
 - **[id rule]({{< ref "docs/rules/idRule.md" >}})** - ID collision detection for jobs and environment variables
@@ -151,6 +157,7 @@ It is important to distinguish two levels of automated fixing in security toolin
 - **[deprecated-commands rule]({{< ref "docs/rules/deprecatedcommandsrule.md" >}})** - Detects deprecated workflow commands
 - **[environment-variable rule]({{< ref "docs/rules/environmentvariablerule.md" >}})** - Environment variable name validation
 - **[job-needs rule]({{< ref "docs/rules/jobneeds.md" >}})** - Job dependency validation
+- **[cache-bloat rule]({{< ref "docs/rules/cachebloatrule.md" >}})** - Detects cache bloat with cache/restore and cache/save
 - **[obfuscation rule]({{< ref "docs/rules/obfuscation.md" >}})** - Detects obfuscated code in workflows
 
 ---
@@ -201,16 +208,16 @@ $ sisakulint -debug
 
 | OWASP Risk | Description | sisakulint Rules |
 |------------|-------------|------------------|
-| CICD-SEC-01 | Insufficient Flow Control Mechanisms | timeout-minutes, dangerous-triggers-*, self-hosted-runners |
-| CICD-SEC-02 | Inadequate Identity and Access Management | permissions, secret-exposure, unmasked-secret-exposure, bot-conditions |
-| CICD-SEC-03 | Dependency Chain Abuse | known-vulnerable-actions, archived-uses, impostor-commit, ref-confusion, unpinned-images |
-| CICD-SEC-04 | Poisoned Pipeline Execution (PPE) | code-injection-*, envvar-injection-*, envpath-injection-*, untrusted-checkout-*, unsound-contains, improper-access-control, deprecated-commands, obfuscation, reusable-workflow-taint, output-clobbering, argument-injection, request-forgery, impostor-commit, artifact-poisoning-*, cache-poisoning-* |
+| CICD-SEC-01 | Insufficient Flow Control Mechanisms | improper-access-control, bot-conditions, unsound-contains, dangerous-triggers-* |
+| CICD-SEC-02 | Inadequate Identity and Access Management | permissions, secret-exposure, unmasked-secret-exposure, secrets-inherit, ai-action-unrestricted-trigger |
+| CICD-SEC-03 | Dependency Chain Abuse | known-vulnerable-actions, archived-uses, impostor-commit, ref-confusion, reusable-workflow-taint |
+| CICD-SEC-04 | Poisoned Pipeline Execution (PPE) | code-injection-*, envvar-injection-*, envpath-injection-*, output-clobbering-*, argument-injection-*, untrusted-checkout-* |
 | CICD-SEC-05 | Insufficient PBAC (Pipeline-Based Access Controls) | self-hosted-runners |
-| CICD-SEC-06 | Insufficient Credential Hygiene | credentials, artipacked, secret-exfiltration, secrets-in-artifacts, secrets-inherit |
-| CICD-SEC-07 | Insecure System Configuration | self-hosted-runners, id, conditional, expression, job-needs, environment-variable, cache-bloat |
-| CICD-SEC-08 | Ungoverned Usage of 3rd Party Services | action-list, commit-sha, workflow-call |
-| CICD-SEC-09 | Improper Artifact Integrity Validation | artifact-poisoning-*, cache-poisoning-*, artipacked, secrets-in-artifacts |
-| CICD-SEC-10 | Insufficient Logging and Visibility | - |
+| CICD-SEC-06 | Insufficient Credential Hygiene | credentials, artipacked, secrets-in-artifacts, secret-exfiltration, ai-action-excessive-tools, ai-action-prompt-injection |
+| CICD-SEC-07 | Insecure System Configuration | timeout-minutes, deprecated-commands, cache-bloat |
+| CICD-SEC-08 | Ungoverned Usage of 3rd Party Services | action-list, commit-sha, unpinned-images |
+| CICD-SEC-09 | Improper Artifact Integrity Validation | artifact-poisoning-*, cache-poisoning-* |
+| CICD-SEC-10 | Insufficient Logging and Visibility | obfuscation, request-forgery-* |
 
 {{< popup_link2 href="https://owasp.org/www-project-top-10-ci-cd-security-risks/" >}}
 
@@ -219,7 +226,7 @@ $ sisakulint -debug
 ## FAQ
 
 **How is sisakulint different from actionlint?**
-actionlint is an excellent syntax and best-practice linter for GitHub Actions. sisakulint builds on that foundation with 52 security-focused rules, taint propagation across steps and jobs, and 38+ auto-fixes. If actionlint is a spell checker, sisakulint is a security auditor.
+actionlint is an excellent syntax and best-practice linter for GitHub Actions. sisakulint builds on that foundation with 54 security-focused rules, taint propagation across steps and jobs, and 38+ auto-fixes. If actionlint is a spell checker, sisakulint is a security auditor.
 
 **How is it different from zizmor?**
 zizmor performs single-step pattern matching. sisakulint tracks data flow across multiple steps, jobs, and reusable workflows via taint propagation — catching vulnerabilities that single-step analysis fundamentally cannot detect (e.g., TOCTOU in checkout-to-use chains, cross-job secret exfiltration).
