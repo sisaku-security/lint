@@ -6,7 +6,7 @@ draft = false
 
 # Find and auto-fix security vulnerabilities in GitHub Actions
 
-**54 security rules. 38+ auto-fixes. Taint propagation. 100% detection on GitHub Security Lab advisories.**
+**52 security rules. 38+ auto-fixes. Taint propagation. 100% detection on GitHub Security Lab advisories.**
 
 {{< figure src="https://github.com/sisaku-security/homebrew-sisakulint/assets/67861004/e9801cbb-fbe1-4822-a5cd-d1daac33e90f" alt="sisakulint logo" width="300px" >}}
 
@@ -66,7 +66,7 @@ GitHub Actions has become the de facto CI/CD platform, yet the security tooling 
 
 | Capability | actionlint | zizmor | StepSecurity | Semgrep | GH Advanced Security | AI Security Agents* | **sisakulint** |
 |------------|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| Security-focused rules | Limited | 24 | N/A (runtime) | Yes | Yes | AI-based (no static rules) | **Yes (54 rules)** |
+| Security-focused rules | Limited | 24 | N/A (runtime) | Yes | Yes | AI-based (no static rules) | **Yes (52 rules)** |
 | Taint propagation | No | No | No | Yes (Pro) | Yes | Partial | **Yes** |
 | Supply chain detection | No | Limited | No | Limited | Limited | Limited | **Yes (CVSS 9.8)** |
 | Multi-step analysis | No | No | No | Limited | Yes | Yes | **Yes** |
@@ -86,7 +86,7 @@ It is important to distinguish two levels of automated fixing in security toolin
 
 ---
 
-## Security Rules (54 rules)
+## Security Rules (52 rules)
 
 ### Code Injection & Expression Safety
 
@@ -96,8 +96,6 @@ It is important to distinguish two levels of automated fixing in security toolin
 - **[envvar-injection-medium]({{< ref "docs/rules/envvarinjectionmedium.md" >}})** - Environment variable injection in normal triggers
 - **[envpath-injection-critical]({{< ref "docs/rules/envpathinjectioncritical.md" >}})** - PATH injection in privileged triggers
 - **[envpath-injection-medium]({{< ref "docs/rules/envpathinjectionmedium.md" >}})** - PATH injection in normal triggers
-- **[container-env-injection-critical]({{< ref "docs/rules/containerenvinjectioncritical.md" >}})** - Container environment variable pollution in privileged triggers (LD_PRELOAD, BASH_ENV, PATH)
-- **[container-env-injection-medium]({{< ref "docs/rules/containerenvinjectionmedium.md" >}})** - Container environment variable pollution in normal triggers
 - **[argument-injection rule]({{< ref "docs/rules/argumentinjection.md" >}})** - Detects command-line argument injection
 - **[output-clobbering rule]({{< ref "docs/rules/outputclobbering.md" >}})** - Detects output clobbering vulnerabilities via $GITHUB_OUTPUT
 - **[unsound-contains rule]({{< ref "docs/rules/unsoundcontains.md" >}})** - Detects unsafe contains() usage in conditions
@@ -214,7 +212,7 @@ $ sisakulint -debug
 | CICD-SEC-01 | Insufficient Flow Control Mechanisms | improper-access-control, bot-conditions, unsound-contains, ai-action-unrestricted-trigger |
 | CICD-SEC-02 | Inadequate Identity and Access Management | permissions |
 | CICD-SEC-03 | Dependency Chain Abuse | known-vulnerable-actions, archived-uses, impostor-commit, ref-confusion, reusable-workflow-taint |
-| CICD-SEC-04 | Poisoned Pipeline Execution (PPE) | dangerous-triggers-\*, code-injection-\*, envvar-injection-\*, envpath-injection-\*, container-env-injection-\*, output-clobbering-\*, argument-injection-\*, untrusted-checkout-\*, request-forgery-\*, ai-action-prompt-injection |
+| CICD-SEC-04 | Poisoned Pipeline Execution (PPE) | dangerous-triggers-\*, code-injection-\*, envvar-injection-\*, envpath-injection-\*, output-clobbering-\*, argument-injection-\*, untrusted-checkout-\*, request-forgery-\*, ai-action-prompt-injection |
 | CICD-SEC-05 | Insufficient PBAC | self-hosted-runners, ai-action-excessive-tools |
 | CICD-SEC-06 | Insufficient Credential Hygiene | credentials, artipacked, secrets-in-artifacts, secret-exfiltration, secret-exposure, unmasked-secret-exposure, secrets-inherit |
 | CICD-SEC-07 | Insecure System Configuration | timeout-minutes, deprecated-commands, cache-bloat |
@@ -229,7 +227,7 @@ $ sisakulint -debug
 ## FAQ
 
 **How is sisakulint different from actionlint?**
-actionlint is an excellent syntax and best-practice linter for GitHub Actions. sisakulint builds on that foundation with 54 security-focused rules, taint propagation across steps and jobs, and 38+ auto-fixes. If actionlint is a spell checker, sisakulint is a security auditor.
+actionlint is an excellent syntax and best-practice linter for GitHub Actions. sisakulint builds on that foundation with 52 security-focused rules, taint propagation across steps and jobs, and 38+ auto-fixes. If actionlint is a spell checker, sisakulint is a security auditor.
 
 **How is it different from zizmor?**
 zizmor performs single-step pattern matching. sisakulint tracks data flow across multiple steps, jobs, and reusable workflows via taint propagation — catching vulnerabilities that single-step analysis fundamentally cannot detect (e.g., TOCTOU in checkout-to-use chains, cross-job secret exfiltration).

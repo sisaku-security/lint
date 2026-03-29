@@ -99,9 +99,7 @@ sisakulint **partially detected** this vulnerability:
 - The specific docker command escaping issue
 - The distinction between step-level `env` (safer) and job-level `container.env` (vulnerable)
 
-**Reason for Partial Detection:**
-
-Current detection focuses on step `run` commands and step-level `env`. This vulnerability specifically affects job-level `container.env`, which is a different configuration scope. Extending detection to cover `container.env` would improve coverage.
+**Note:** A dedicated `container-env-injection` rule was previously implemented but has been reverted. The original Docker CLI `-e` flag injection (CVE-2022-39321) was patched in actions/runner v2.299.1, and the remaining environment variable pollution risk is covered by the existing `dangerous-triggers-critical` rule which flags privileged triggers without mitigations.
 
 **Detection Category**: Partially detectable (the environment variable injection category matches, but container-specific patterns are not covered)
 
@@ -153,28 +151,6 @@ The advisory recommends: "You may want to consider removing any container action
    ```
 
 3. **Use GitHub-hosted runners**: The impact is more severe on self-hosted runners where container breakout could affect the host system
-
-## Possible Rule Enhancement
-
-sisakulint could improve detection by:
-
-1. Adding specific checks for `container.env` field in job definitions
-2. Flagging any untrusted input in `container.env` in privileged contexts
-3. Suggesting step-level `env` as a safer alternative
-
-Example enhancement:
-```go
-// In ContainerEnvInjectionRule.VisitJobPre()
-if job.Container != nil && job.Container.Env != nil {
-    for key, value := range job.Container.Env {
-        if containsUntrustedInput(value) {
-            rule.Errorf(job.Pos,
-                "untrusted input in container.env may lead to command injection. " +
-                "Use step-level env instead")
-        }
-    }
-}
-```
 
 ## Technical Fix Details
 
