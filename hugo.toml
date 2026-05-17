@@ -6,6 +6,15 @@ enableGitInfo = true
 
 [param]
 BookRepo = 'https://github.com/sisaku-security/sisakulint'
+BookTheme = 'dark'
+
+[security]
+  [security.http]
+    methods = ['(?i)GET|POST']
+    # Default Hugo policy denies localhost. The popup_link2 shortcode calls
+    # the local OGP proxy at 127.0.0.1:3000, so we relax it to allow any
+    # http(s) host that starts with a letter or digit (still denies userinfo URLs).
+    urls = ['(?i)^https?://[a-z0-9]', '! (?i)^https?://[^/?#]*@']
 
 [module]
 [[module.imports]]

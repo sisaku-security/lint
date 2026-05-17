@@ -1,0 +1,215 @@
+/* sisakulint — shared dark terminal/security theme
+ * Used by the landing page and (via inject/head.html) the hugo-book docs pages.
+ */
+
+:root {
+  /* surfaces */
+  --sk-bg:          #0a0e14;
+  --sk-bg-elev:     #11161d;
+  --sk-bg-card:     #161b22;
+  --sk-bg-inset:    #0d1117;
+
+  /* borders */
+  --sk-border:      #21262d;
+  --sk-border-2:    #30363d;
+  --sk-border-3:    #3d444d;
+
+  /* text */
+  --sk-text:        #e6edf3;
+  --sk-text-muted:  #8b949e;
+  --sk-text-dim:    #6e7681;
+
+  /* accents */
+  --sk-green:       #3fb950;
+  --sk-green-2:     #56d364;
+  --sk-green-soft:  rgba(63, 185, 80, 0.12);
+  --sk-red:         #f85149;
+  --sk-red-soft:    rgba(248, 81, 73, 0.12);
+  --sk-amber:       #d29922;
+  --sk-amber-soft:  rgba(210, 153, 34, 0.12);
+  --sk-blue:        #58a6ff;
+  --sk-blue-soft:   rgba(88, 166, 255, 0.12);
+  --sk-purple:      #bc8cff;
+
+  /* radii & shadows */
+  --sk-radius-sm: 6px;
+  --sk-radius:    10px;
+  --sk-radius-lg: 16px;
+  --sk-shadow:    0 1px 0 rgba(255,255,255,0.04) inset, 0 8px 32px rgba(0,0,0,0.45);
+
+  /* fonts */
+  --sk-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --sk-font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+}
+
+/* ---------- hugo-book overrides (docs pages) ----------
+ * hugo-book emits `body` with data-theme either 'light' or 'dark'.
+ * We force its variables to our palette so docs harmonize with the landing.
+ */
+body,
+body[data-theme='light'],
+body[data-theme='dark'],
+body[data-theme='auto'] {
+  --body-background:       var(--sk-bg);
+  --body-font-color:       var(--sk-text);
+  --color-link:            var(--sk-green-2);
+  --color-visited-link:    var(--sk-green-2);
+  --gray-100:              rgba(255,255,255,0.06);
+  --gray-200:              rgba(255,255,255,0.10);
+  --gray-500:              var(--sk-text-muted);
+  --icon-filter:           invert(0.85);
+
+  background: var(--sk-bg);
+  color: var(--sk-text);
+  font-family: var(--sk-font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* book headings */
+.book-page h1,
+.book-page h2,
+.book-page h3,
+.book-page h4 {
+  color: var(--sk-text);
+  letter-spacing: -0.01em;
+}
+.book-page h2 {
+  border-bottom: 1px solid var(--sk-border);
+  padding-bottom: 0.4em;
+  margin-top: 2.2em;
+}
+
+/* book menu sidebar */
+.book-menu .book-menu-content,
+aside.book-menu nav {
+  background: var(--sk-bg-elev);
+  border-right: 1px solid var(--sk-border);
+}
+.book-menu a {
+  color: var(--sk-text-muted);
+}
+.book-menu a:hover,
+.book-menu a.active {
+  color: var(--sk-green-2);
+}
+
+/* TOC */
+.book-toc nav {
+  border-left: 1px solid var(--sk-border);
+  background: transparent;
+}
+.book-toc a {
+  color: var(--sk-text-muted);
+}
+.book-toc a:hover {
+  color: var(--sk-green-2);
+}
+
+/* header search */
+.book-search input {
+  background: var(--sk-bg-inset);
+  border: 1px solid var(--sk-border-2);
+  color: var(--sk-text);
+  border-radius: var(--sk-radius-sm);
+}
+.book-search input::placeholder { color: var(--sk-text-dim); }
+
+/* inline code & code blocks */
+.book-page code,
+.book-page pre {
+  font-family: var(--sk-font-mono);
+}
+.book-page :not(pre) > code {
+  background: var(--sk-bg-inset);
+  border: 1px solid var(--sk-border);
+  color: var(--sk-green-2);
+  padding: 0.1em 0.4em;
+  border-radius: var(--sk-radius-sm);
+  font-size: 0.88em;
+}
+.book-page pre,
+.book-page .highlight pre {
+  background: var(--sk-bg-inset) !important;
+  border: 1px solid var(--sk-border);
+  border-radius: var(--sk-radius);
+  padding: 1rem 1.2rem;
+}
+
+/* tables */
+.book-page table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+  border: 1px solid var(--sk-border);
+  border-radius: var(--sk-radius);
+  overflow: hidden;
+}
+.book-page th,
+.book-page td {
+  border: none;
+  border-bottom: 1px solid var(--sk-border);
+  padding: 0.65em 0.9em;
+  text-align: left;
+}
+.book-page th {
+  background: var(--sk-bg-elev);
+  color: var(--sk-text);
+  font-weight: 600;
+  font-size: 0.85em;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.book-page tbody tr:nth-child(even) td {
+  background: rgba(255,255,255,0.015);
+}
+.book-page tbody tr:last-child td { border-bottom: none; }
+
+/* blockquotes */
+.book-page blockquote {
+  border-left: 3px solid var(--sk-green);
+  background: var(--sk-green-soft);
+  color: var(--sk-text);
+  padding: 0.8em 1em;
+  border-radius: 0 var(--sk-radius-sm) var(--sk-radius-sm) 0;
+}
+
+/* links inside content */
+.book-page a {
+  color: var(--sk-green-2);
+  text-decoration: none;
+  border-bottom: 1px dashed transparent;
+  transition: border-color 0.15s ease;
+}
+.book-page a:hover {
+  border-bottom-color: var(--sk-green-2);
+}
+
+/* hr */
+.book-page hr {
+  border: none;
+  border-top: 1px solid var(--sk-border);
+  margin: 2.5em 0;
+}
+
+/* page header bar (mobile) */
+.book-header {
+  background: var(--sk-bg-elev);
+  border-bottom: 1px solid var(--sk-border);
+}
+
+/* selection */
+::selection {
+  background: var(--sk-green-soft);
+  color: var(--sk-green-2);
+}
+
+/* scrollbar (webkit) */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--sk-bg); }
+::-webkit-scrollbar-thumb {
+  background: var(--sk-border-2);
+  border-radius: 8px;
+  border: 2px solid var(--sk-bg);
+}
+::-webkit-scrollbar-thumb:hover { background: var(--sk-border-3); }
