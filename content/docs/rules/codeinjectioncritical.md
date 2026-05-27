@@ -13,11 +13,11 @@ This rule detects code injection vulnerabilities when untrusted input is used di
 - **Privileged Context Detection**: Identifies dangerous patterns in `pull_request_target`, `workflow_run`, `issue_comment`, and other privileged triggers
 - **Dual Script Detection**: Analyzes both `run:` scripts and `actions/github-script` for untrusted input
 - **Auto-fix Support**: Automatically converts unsafe patterns to use environment variables
-- **Zero False Negatives**: Does not flag already-safe patterns using environment variables
+- **Zero False Positives** on env-var-safe patterns: already-safe patterns using environment variables are not flagged (this is false-*positive* suppression, not false-negative — the rule still detects every unsafe interpolation).
 
 ### Security Impact
 
-**Severity: Critical (10/10)**
+**Severity: Critical** — encoded via the `-critical` rule-name suffix and the `(critical)` token in emitted diagnostics. The upstream CodeQL query (`actions-code-injection-critical`) lists `Security severity: 9 / Severity: error / Precision: very-high`.
 
 Code injection in privileged workflows represents the highest severity vulnerability in GitHub Actions:
 
@@ -26,17 +26,23 @@ Code injection in privileged workflows represents the highest severity vulnerabi
 3. **Repository Compromise**: Ability to modify code, create releases, or manipulate repository settings
 4. **Supply Chain Attack**: Compromised workflows can poison artifacts or deployments
 
-This vulnerability is classified as **CWE-94: Improper Control of Generation of Code ('Code Injection')** and aligns with OWASP CI/CD Security Risk **CICD-SEC-04: Poisoned Pipeline Execution (PPE)**.
+This vulnerability is classified under **CWE-94: Improper Control of Generation of Code ('Code Injection')**, together with the related **CWE-95: Improper Neutralization of Directives in Dynamically Evaluated Code ('Eval Injection')** and **CWE-116: Improper Encoding or Escaping of Output**. It aligns with OWASP CI/CD Security Risk **CICD-SEC-04: Poisoned Pipeline Execution (PPE)**. (The three-CWE tagging matches the upstream CodeQL canonical query.)
 
 ### Privileged Workflow Triggers
 
-The following triggers are considered privileged because they run with write access or secrets:
+The upstream CodeQL canonical query treats the following three triggers as privileged because they run with write access or secrets:
 
 - **`pull_request_target`**: Runs with write permissions and secrets, but triggered by untrusted PRs
 - **`workflow_run`**: Executes with elevated privileges after another workflow completes
 - **`issue_comment`**: Triggered by comments from any user, including external contributors
-- **`issues`**: Triggered by issue events, potentially from untrusted sources
-- **`discussion_comment`**: Triggered by discussion comments from any user
+
+sisakulint additionally treats the following events as privileged for the purpose of code-injection detection:
+
+- **`issues`** — secrets resolved, write scope available
+- **`discussion_comment`** — secrets resolved, comment body is fully attacker-controlled
+- **`pull_request_review`** — *additionally detected by sisakulint*. CodeQL's canonical list does not include this event, but sisakulint flags it conservatively. The detection is justified by two cases:
+  - **Same-repo case**: secrets and `GITHUB_TOKEN` permissions resolve identically to `issue_comment` — verified live via `sisaku-security/workflow-probe:results/pull-request-review-privilege.md` (2026-05-24).
+  - **Fork-PR case**: secrets are *not* passed and `GITHUB_TOKEN` is read-only per GitHub's "Workflows in forked repositories" documentation. The shell evaluation of `${{ ... }}` in `run:` still happens (RCE primitive remains), and a read-only token can still exfiltrate source via the Contents API — so the diagnostic is still load-bearing.
 
 ### Example Vulnerable Workflow
 
@@ -96,14 +102,16 @@ Running sisakulint will detect untrusted input in privileged contexts:
 ```bash
 $ sisakulint
 
-.github/workflows/pr-label.yaml:12:20: code injection (critical): "github.event.pull_request.title" is potentially untrusted and used in a workflow with privileged triggers. Avoid using it directly in inline scripts. Instead, pass it through an environment variable. See https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions [code-injection-critical]
+.github/workflows/pr-label.yaml:12:20: code injection (critical): "github.event.pull_request.title" is potentially untrusted and used in a workflow with privileged triggers. Avoid using it directly in inline scripts. Instead, pass it through an environment variable. See https://sisaku-security.github.io/lint/docs/rules/codeinjectioncritical/ [code-injection-critical]
      12 👈|        run: |
               TITLE="${{ github.event.pull_request.title }}"
 ```
 
+> The shell-evaluation primitive that makes this dangerous is verified end-to-end on a live runner. See `sisaku-security/workflow-probe:results/codeinjection-issue-comment.md` (2026-05-24): a payload of `INJECT$(echo TEST)END` in the vulnerable pattern produced `INJECTTESTEND` (shell evaluated `$(...)`), while the env-var-routed safe pattern preserved the literal `INJECT$(echo TEST)END`. The auto-fix design is therefore not a paper claim — it neutralizes the injection on the same runner that would otherwise execute it.
+
 ### Auto-fix Support
 
-The code-injection-critical rule supports auto-fixing by converting unsafe patterns to use environment variables:
+The code-injection-critical rule supports auto-fixing by converting unsafe patterns to use environment variables. The auto-fix covers the two surfaces it can reliably transform — `run:` script bodies and `actions/github-script` `script:` parameters. The shell-metacharacter checks described under *Shell Metacharacter Injection* are diagnostic-only and have **no auto-fix** — they require manual review.
 
 ```bash
 # Preview changes without applying
@@ -282,6 +290,11 @@ The following GitHub context properties are considered untrusted in privileged w
 **Other Untrusted Sources:**
 - `github.event.pages.*.page_name`
 - `github.head_ref`
+- `github.event.commits.*.message`
+- `github.event.head_commit.message` (and other `head_commit.*` fields)
+- `github.event.workflow_run.head_branch`
+- `github.event.workflow_run.head_repository.full_name`
+- `github.event.workflow_run.pull_requests.*.head.ref`
 
 ### Real-World Attack Vectors
 
@@ -440,6 +453,17 @@ The code-injection-critical rule detects:
     - `gotson/pull-request-comment-branch` - exposes `head_ref`, `head_sha`, `base_ref`, `base_sha`
     - `xt0rted/pull-request-comment-branch` - same outputs as above
     - `peter-evans/find-comment` - exposes `comment-body`, `comment-author`
+    - `juliangruber/read-file-action` - reads attacker-controlled file contents into outputs
+    - `andstor/file-reader-action` - reads attacker-controlled file contents into outputs
+    - `tj-actions/changed-files` - file lists derived from PR head are attacker-controlled
+
+### Cross-Job Taint Resolution
+
+Taint propagation is not limited to consecutive steps inside one job. The rule also tracks `needs.<job>.outputs.<name>` references: if a producer job writes an output derived from untrusted input, every consumer job that references that output via `needs.<job>.outputs.<name>` inherits the taint and triggers detection. This analysis is performed in `VisitWorkflowPost` against the per-workflow taint map and runs across the whole workflow file rather than per-job.
+
+### Trigger Narrowing via Job-Level `if:`
+
+The rule does not blindly trust that a privileged workflow trigger means every job runs in a privileged context. The `JobTriggerAnalyzer` honors job-level `if:` conditions when computing the trigger set for each job — e.g. a job guarded by `if: github.event_name == 'push'` inside a `pull_request_target`-triggered workflow is analyzed under the `push` trigger only, and the critical-severity diagnostic is downgraded or suppressed accordingly. This reduces false positives for workflows that deliberately gate privileged paths.
 
 ### Safe Patterns
 
@@ -640,10 +664,13 @@ This rule has minimal performance impact:
 ### See Also
 
 **Industry References:**
-- [CodeQL: Code Injection (Critical)](https://codeql.github.com/codeql-query-help/actions/actions-code-injection-critical/) - CodeQL's detection pattern
+- [CodeQL: Code Injection (Critical)](https://codeql.github.com/codeql-query-help/actions/actions-code-injection-critical/) - CodeQL's detection pattern (canonical upstream; CWE-94 + CWE-95 + CWE-116)
+- [GitHub Security Lab: Keeping your GitHub Actions and workflows secure — Untrusted input](https://securitylab.github.com/resources/github-actions-preventing-pwn-requests) - canonical research post cited by the CodeQL query
 - [GitHub: Security Hardening for GitHub Actions](https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions) - Official security guidance
 - [OWASP: CICD-SEC-04 - PPE](https://owasp.org/www-project-top-10-ci-cd-security-risks/CICD-SEC-04-Poisoned-Pipeline-Execution) - Attack patterns
-- [CWE-94: Code Injection](https://cwe.mitre.org/data/definitions/94.html) - Vulnerability classification
+- [CWE-94: Code Injection](https://cwe.mitre.org/data/definitions/94.html) - Primary vulnerability classification
+- [CWE-95: Eval Injection](https://cwe.mitre.org/data/definitions/95.html) - Related classification (dynamic evaluation)
+- [CWE-116: Improper Encoding/Escaping of Output](https://cwe.mitre.org/data/definitions/116.html) - Related classification (escaping failure)
 - [GitHub: Keeping Actions Secure](https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-third-party-actions) - Action security best practices
 
 {{< popup_link2 href="https://codeql.github.com/codeql-query-help/actions/actions-code-injection-critical/" >}}
