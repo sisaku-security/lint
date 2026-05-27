@@ -5,7 +5,9 @@ weight: 1
 
 ### Untrusted Checkout Rule Overview
 
-This rule detects when workflows with privileged triggers check out untrusted code from pull requests. This is a **critical security vulnerability** (CVSS 9.3) that allows attackers to exfiltrate secrets or compromise the repository.
+This rule detects when workflows with privileged triggers check out untrusted code from pull requests, which can allow attackers to exfiltrate secrets or compromise the repository.
+
+The upstream CodeQL canonical query (`actions-untrusted-checkout-critical`) classifies this attack at `Security severity: 9.3 / Severity: error / Precision: very-high` and maps it to **CWE-829: Inclusion of Functionality from Untrusted Control Sphere**. sisakulint inherits the same attack model but currently emits **no in-message severity token** — the rule name has no `-critical`/`-medium` suffix and the diagnostic carries no `(critical)` token. Treat the CodeQL severity as the canonical reference until a sisakulint-side severity emit policy is finalized.
 
 **Vulnerable Example:**
 
@@ -26,7 +28,7 @@ jobs:
 **Detection Output:**
 
 ```bash
-vulnerable.yaml:9:16: checking out untrusted code from pull request in workflow with privileged trigger 'pull_request_target' (line 2). This allows potentially malicious code from external contributors to execute with access to repository secrets. Use 'pull_request' trigger instead, or avoid checking out PR code when using 'pull_request_target'. See https://codeql.github.com/codeql-query-help/actions/actions-untrusted-checkout-critical/ for more details [untrusted-checkout]
+vulnerable.yaml:9:16: checking out untrusted code from pull request in workflow with privileged trigger 'pull_request_target' (line 2). This allows potentially malicious code from external contributors to execute with access to repository secrets. Use 'pull_request' trigger instead, or avoid checking out PR code when using 'pull_request_target'. See https://sisaku-security.github.io/lint/docs/rules/untrustedcheckout/ for more details [untrusted-checkout]
       9 👈|          ref: ${{ github.event.pull_request.head.sha }}
 ```
 
@@ -76,46 +78,37 @@ jobs:
 
 ### Technical Detection Mechanism
 
-The rule performs three-step detection:
+The rule performs a three-pass analysis. The pseudocode below mirrors the actual call sites (`pkg/core/untrustedcheckout.go`) rather than a paraphrased sketch.
 
-**Step 1: Identify Privileged Triggers**
+**Pass 1 (`VisitWorkflowPre`): collect privileged triggers and per-job narrowing**
 
 ```go
-// In VisitWorkflowPre
-for _, event := range workflow.On {
-    if webhookEvent, ok := event.(*ast.WebhookEvent); ok {
-        triggerName := webhookEvent.EventName()
-        switch triggerName {
-        case "pull_request_target", "issue_comment", "workflow_run":
-            // Mark workflow as having dangerous trigger
-            rule.hasDangerousTrigger = true
-        }
-    }
-}
+// Workflow-level triggers populate workflowTriggerInfos.
+// JobTriggerAnalyzer then narrows per-job triggers using job-level
+// if: conditions so that a guarded job only inherits the triggers
+// its condition actually permits. Results are stored per-job in
+// jobHasDangerousTrigger (NOT on a workflow-wide flag).
 ```
 
-**Step 2: Find Checkout Actions**
+**Pass 2 (`VisitJobPre`): record dangerous-trigger position per job**
 
 ```go
-// In VisitStep
-if action, ok := step.Exec.(*ast.ExecAction); ok {
-    if strings.HasPrefix(action.Uses.Value, "actions/checkout@") {
-        // Found checkout action - check ref parameter
-    }
-}
+// For every job whose narrowed trigger set intersects
+// {pull_request_target, issue_comment, workflow_run, workflow_call},
+// remember dangerousTriggerPos / dangerousTriggerName so later
+// diagnostics can cite the originating trigger line:column.
 ```
 
-**Step 3: Analyze Ref Parameter**
+**Pass 3 (`VisitStep`): inspect `actions/checkout` ref**
 
 ```go
-// Check if ref points to PR HEAD
-refInput := action.Inputs["ref"]
-if refInput != nil && refInput.Value.ContainsExpression() {
-    // Parse expressions like ${{ github.event.pull_request.head.sha }}
-    if isUntrustedPRExpression(refInput.Value) {
-        // REPORT ERROR
-    }
-}
+// strings.HasPrefix(action.Uses.Value, "actions/checkout@")
+// → isUntrustedPRRef(refValue) → IsUnsafeCheckoutRef(refValue)
+//   does a CASE-INSENSITIVE substring scan against a list of
+//   ~8 known unsafe substrings (see "Untrusted Ref Patterns"
+//   below), AND treats any ${{ ... }} expression not present in
+//   the safe-patterns allowlist as unsafe ("conservative
+//   unknown expression" rule, see section below).
 ```
 
 ### Detection Logic Explanation
@@ -146,11 +139,26 @@ if refInput != nil && refInput.Value.ContainsExpression() {
 
 #### Untrusted Ref Patterns
 
-The rule detects these dangerous ref expressions:
+The rule's `IsUnsafeCheckoutRef` performs a **case-insensitive substring scan** over the literal text of the `ref:` input. Any ref whose value contains one of the following substrings is flagged. The list is illustrative of the dangerous shapes — the rule itself does not require an exact match.
 
-- `${{ github.event.pull_request.head.sha }}` - PR HEAD commit SHA
-- `${{ github.event.pull_request.head.ref }}` - PR HEAD branch reference
-- Any expression containing `github.event.pull_request.head.*`
+- `github.head_ref`
+- `github.event.pull_request.head.ref`
+- `github.event.pull_request.head.sha`
+- `github.event.pull_request.head.label`
+- `refs/pull/` (e.g. `refs/pull/123/head`)
+- `head_sha` (any `*.head_sha` reference)
+- `head-sha` (hyphenated variant from third-party actions)
+- Any other expression of the form `github.event.*.head.*`
+
+In addition, a **conservative-unknown-expression** rule applies (see next section).
+
+#### Conservative Unknown Expression
+
+Any `${{ ... }}` expression in the `ref:` input that does **not** appear in the safe-patterns allowlist (see *Safe Patterns* below) is treated as unsafe. This is intentionally conservative: a custom expression that the rule has no static knowledge of will be flagged rather than silently allowed. If you maintain a custom expression that is provably safe, prefer rewriting it to one of the known-safe forms or — as a temporary measure — disabling the rule on that file with a comment directive.
+
+#### Trigger Narrowing via Job-Level `if:`
+
+The rule does not assume that a privileged workflow trigger means every job is privileged. The `JobTriggerAnalyzer` honors job-level `if:` conditions when computing the set of triggers under which each job is analyzed — e.g. a job guarded by `if: github.event_name == 'push'` inside a `pull_request_target`-triggered workflow is analyzed as a `push` job only, and the untrusted-checkout diagnostic is suppressed accordingly.
 
 #### Safe Patterns
 
@@ -226,12 +234,25 @@ jobs:
 
 The rule has very few false positives because:
 
-1. It only triggers when **both** conditions are met (privileged trigger + untrusted checkout)
+1. It only triggers when **both** conditions are met (privileged trigger + untrusted checkout).
 2. Safe checkout patterns are explicitly allowed:
-   - No `ref` parameter (defaults to trigger SHA - safe)
-   - `ref: ${{ github.sha }}` (base branch - safe)
-   - `ref: main` (literal branch names - safe)
-   - `pull_request` trigger (no privileges - safe)
+   - No `ref` parameter (defaults to trigger SHA — safe)
+   - `ref: ${{ github.sha }}` (base branch — safe)
+   - `ref: ${{ github.base_ref }}` (base branch of the PR)
+   - `ref: ${{ github.event.pull_request.base.ref }}` (base ref of the PR)
+   - `ref: ${{ github.event.pull_request.base.sha }}` (base SHA of the PR)
+   - `ref: ${{ github.event.repository.default_branch }}` (repo default branch)
+   - `ref: main` (literal branch names — safe)
+   - `pull_request` trigger (no privileges — safe)
+
+### Trigger Privilege Nuance (`issue_comment`)
+
+Classifying `issue_comment` as privileged is correct in the sense that the workflow runs in the base-repo context and can resolve `secrets.*`. The exact scope of the resulting `GITHUB_TOKEN`, however, depends on the repository's "Workflow permissions" setting:
+
+- **Newer repositories (created after February 2023)** default to read-only `GITHUB_TOKEN` (Contents/Metadata/Packages). Other API surfaces (issues, actions, pulls) return `403` unless the workflow declares a `permissions:` block explicitly.
+- **Older repositories (created before February 2023)** default to `write-all`, in which case the token can mutate code, releases, and packages.
+
+Both cases are exploitable — the *primary* danger of the rule is secret exposure, not token writability. This nuance is verified live: `sisaku-security/workflow-probe:results/issue-comment-privileged.md` (2026-05-24) shows `GITHUB_TOKEN` resolves with length 40 under `issue_comment`, can read contents but returns `403` on issues / actions / pulls under the new default.
 
 ### References
 
@@ -281,6 +302,12 @@ jobs:
 
 **Note:** Auto-fix provides a safe default, but you should review whether your workflow actually needs to checkout code at all when using privileged triggers. Consider using the two-workflow pattern or removing the checkout step entirely if appropriate.
 
+> ⚠️ **Mixed-literal ref auto-fix is destructive.** If the existing `ref:` value mixes a literal prefix with an expression (e.g. `ref: 'pr-${{ github.event.pull_request.head.sha }}'`), the auto-fix **replaces the entire string** with `${{ github.sha }}`, including the literal prefix. The auto-fix does not warn before doing this. Review the diff before applying `-fix on` if your `ref:` values are not pure expressions.
+
+> Companion mitigation: combine the safer ref with `persist-credentials: false` on `actions/checkout`. The GitHub Security Lab "Preventing pwn-requests" research highlights `persist-credentials: false` as a critical defense in this attack class because it prevents the workflow's `GITHUB_TOKEN` from being persisted into the local `.git/config` where checked-out code (and any `pre-commit` hooks etc.) could read it.
+
+> The CodeQL canonical query also recommends the **`safe to test` label workflow** pattern: a guard step that runs only when a maintainer has added a `safe to test` label, gating the privileged path behind manual review. This pattern has a known TOCTOU risk if the PR head is updated after labeling — pair it with `untrusted-checkout-toctou-critical`/`high` for full coverage.
+
 ### Remediation Steps
 
 When this rule triggers:
@@ -306,5 +333,7 @@ When this rule triggers:
 
 For more information on securing GitHub Actions workflows, see:
 - [GitHub Actions Security Best Practices](https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions)
-- [Preventing pwn requests](https://securitylab.github.com/research/github-actions-preventing-pwn-requests/)
+- [Preventing pwn requests](https://securitylab.github.com/research/github-actions-preventing-pwn-requests/) — GitHub Security Lab canonical research for this attack class
+- [CodeQL: `actions-untrusted-checkout-critical`](https://codeql.github.com/codeql-query-help/actions/actions-untrusted-checkout-critical/) — upstream canonical query (Severity 9.3, CWE-829)
+- [Living Off the Pipeline (LOTP) catalog](https://github.com/boostsecurityio/lotp) — broader catalog of CI/CD attack vectors referenced by the CodeQL query
 - [OWASP CI/CD Security Top 10](https://owasp.org/www-project-top-10-ci-cd-security-risks/)
