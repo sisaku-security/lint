@@ -23,7 +23,9 @@ This rule enforces the principle of least privilege by validating permission set
 
 ### Security Impact
 
-**Severity: High (7/10)**
+**Severity: Warning (CodeQL canonical: `Security severity: 5.0`, `Severity: warning`, `Precision: high`)**
+
+The rule itself currently emits no in-message severity token; the canonical severity above is inherited from the upstream CodeQL query (`actions-missing-workflow-permissions`).
 
 Misconfigured permissions in GitHub Actions workflows can lead to serious security issues:
 
@@ -33,7 +35,9 @@ Misconfigured permissions in GitHub Actions workflows can lead to serious securi
 4. **Supply Chain Attacks**: Write access to packages or releases can enable supply chain compromise
 5. **Compliance Violations**: Overly permissive workflows may violate security policies
 
-This aligns with **OWASP CI/CD Security Risk CICD-SEC-02: Inadequate Identity and Access Management**.
+This aligns with **OWASP CI/CD Security Risk CICD-SEC-02: Inadequate Identity and Access Management** and **CWE-275: Permission Issues** (the canonical CWE tag from the upstream CodeQL query `actions-missing-workflow-permissions`).
+
+> Note: For organizations or repositories created before February 2023, the default `GITHUB_TOKEN` permissions are set to read-write. Newer repositories default to a more restricted scope. Explicit `permissions:` declarations are still the safest baseline regardless of repo age.
 
 ### Understanding GitHub Actions Permissions
 
@@ -46,12 +50,15 @@ Available permission scopes include:
 | Scope | Controls Access To |
 |-------|-------------------|
 | `actions` | GitHub Actions runs and artifacts |
+| `artifact-metadata` | Artifact metadata (newer scope, validated by rule) |
+| `attestations` | Build provenance attestations |
 | `checks` | Check runs and check suites |
 | `contents` | Repository contents (code, releases) |
 | `deployments` | Deployment statuses |
 | `discussions` | GitHub Discussions |
 | `id-token` | OIDC token generation |
 | `issues` | Issues and issue comments |
+| `models` | GitHub-hosted ML models |
 | `packages` | GitHub Packages |
 | `pages` | GitHub Pages |
 | `pull-requests` | Pull requests and comments |
@@ -69,12 +76,13 @@ Each scope accepts three values:
 
 #### Top-Level Permission Values
 
-At the workflow or job level, you can set blanket permissions:
+At the workflow or job level, you can set blanket permissions. Only the following three values are accepted by GitHub Actions at the top-level position:
 
 - **`read-all`**: Read access to all scopes (safer default)
 - **`write-all`**: Write access to all scopes (avoid if possible)
-- **`none`**: No permissions (most secure, but may break functionality)
-- **`{}` (empty object)**: Explicitly deny all permissions
+- **`{}` (empty object)**: Explicitly deny all permissions (use this when you want a workflow with no API access)
+
+> Note: A previous version of this documentation listed `permissions: none` as a valid top-level value. This was incorrect: the runner rejects `permissions: none` at the parse stage. To deny all permissions, use `permissions: {}`. Verified via GitHub's official documentation and live runner probes (`sisaku-security/workflow-probe:results/permissions-none.md`, 2026-05-24). The GitHub-official wording is: "You can use the following syntax to disable permissions for all of the available permissions: `permissions: {}`".
 
 ### Example Vulnerable Workflow
 
@@ -131,6 +139,8 @@ The Permissions Rule validates:
 
 4. **Missing Permissions** (in some contexts):
    - Workflows without explicit permissions may inherit overly broad defaults
+   - The missing-permissions warning is **suppressed** when the workflow is invoked via `workflow_call` (reusable workflow), since permissions are inherited from the caller (see *Reusable Workflows* below).
+   - The missing-permissions warning is also **suppressed** when the workflow-level `permissions:` block is omitted *and* every job declares its own explicit `permissions:` block — in that case, the workflow-level omission is a no-op and not reported.
 
 ### Safe Patterns
 
@@ -349,6 +359,22 @@ permissions:
   issues: read
 ```
 
+### Auto-Fix
+
+When a workflow has no top-level `permissions:` block and the missing-permissions warning is not suppressed, sisakulint can inject an empty placeholder via `-fix on`:
+
+```yaml
+permissions:
+  # TODO: Review and add required permissions. Auto-fix sets empty (no permissions) for safety.
+  {}
+```
+
+Behavior:
+
+- The injected block is `permissions: {}` (deny-all by default) accompanied by a `TODO` head comment instructing the user to review and add the minimum required scopes.
+- Insertion position is deterministic: immediately after the `on:` block, or — if no `on:` is present — after `name:` / `run-name:`, or finally at the top of the workflow file.
+- The auto-fix never overwrites an existing `permissions:` block; it only injects when one is absent and the suppression rules above do not apply.
+
 ### Detection Example
 
 Running sisakulint on a misconfigured workflow:
@@ -359,7 +385,7 @@ $ sisakulint .github/workflows/ci.yml
 .github/workflows/ci.yml:4:14: "write" is invalid for permission for all the scopes. [permissions]
      4 👈|permissions: write
 
-.github/workflows/ci.yml:11:7: unknown permission scope "check". all available permission scopes are "actions", "checks", "contents", "deployments", "discussions", "id-token", "issues", "packages", "pages", "pull-requests", "repository-projects", "security-events", "statuses" [permissions]
+.github/workflows/ci.yml:11:7: unknown permission scope "check". all available permission scopes are "actions", "artifact-metadata", "attestations", "checks", "contents", "deployments", "discussions", "id-token", "issues", "models", "packages", "pages", "pull-requests", "repository-projects", "security-events", "statuses" [permissions]
      11 👈|      check: write
 
 .github/workflows/ci.yml:13:15: The value "readable" is not a valid permission for the scope "issues". Only 'read', 'write', or 'none' are acceptable values. [permissions]
@@ -414,7 +440,7 @@ jobs:
 
 #### Reusable Workflows
 
-Permissions in reusable workflows are inherited from the caller:
+Permissions in reusable workflows are inherited from the caller. The Permissions rule **does not flag** a missing top-level `permissions:` block in workflows whose trigger is `workflow_call` (i.e. reusable workflows themselves), because the effective permissions are decided by the caller, not the callee.
 
 ```yaml
 # caller.yml
@@ -429,10 +455,12 @@ jobs:
 
 ### References
 
+- [CodeQL: `actions-missing-workflow-permissions`](https://codeql.github.com/codeql-query-help/actions/actions-missing-workflow-permissions/) — upstream canonical query (sisakulint deliberately ports this; CWE-275, `Security severity: 5.0`).
 - [GitHub Docs: Automatic Token Authentication](https://docs.github.com/en/actions/security-guides/automatic-token-authentication)
 - [GitHub Docs: Permissions for GITHUB_TOKEN](https://docs.github.com/en/actions/security-guides/automatic-token-authentication#permissions-for-the-github_token)
 - [GitHub Security: Hardening for GitHub Actions](https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions)
 - [OWASP: CI/CD Security Risk CICD-SEC-02](https://owasp.org/www-project-top-10-ci-cd-security-risks/)
+- [CWE-275: Permission Issues](https://cwe.mitre.org/data/definitions/275.html)
 
 ### Testing
 
