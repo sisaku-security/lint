@@ -13,11 +13,11 @@ This rule detects environment variable injection vulnerabilities when untrusted 
 - **Privileged Context Detection**: Identifies dangerous patterns in `pull_request_target`, `workflow_run`, `issue_comment`, and other privileged triggers
 - **GITHUB_ENV Write Detection**: Analyzes scripts that write to `$GITHUB_ENV` file
 - **Auto-fix Support**: Automatically sanitizes inputs using `tr -d '\n'` to prevent newline injection
-- **Zero False Positives**: Does not flag already-safe patterns with proper sanitization
+- **Low false-positive rate**: via env-var isolation suppression (`isDefinedInEnv`) and trusted-input filtering (semantic analyzer) — already-safe patterns with proper sanitization are not flagged
 
 ### Security Impact
 
-**Severity: Critical (9/10)**
+**Severity: Critical (9/10)** — anchored to the upstream CodeQL canonical query (`actions-envvar-injection-critical`, `Security severity: 9`).
 
 Environment variable injection in privileged workflows represents a critical vulnerability in GitHub Actions:
 
@@ -27,7 +27,7 @@ Environment variable injection in privileged workflows represents a critical vul
 4. **Secret Exfiltration**: Injected variables can capture or override security-critical values
 5. **Persistence Across Steps**: Unlike in-memory code injection, environment variables persist throughout the job
 
-This vulnerability is classified as **CWE-77: Improper Neutralization of Special Elements used in a Command ('Command Injection')** and **CWE-20: Improper Input Validation**, and aligns with OWASP CI/CD Security Risk **CICD-SEC-04: Poisoned Pipeline Execution (PPE)**.
+This vulnerability is classified as **CWE-77: Improper Neutralization of Special Elements used in a Command ('Command Injection')** and **CWE-20: Improper Input Validation**, and aligns with OWASP CI/CD Security Risk **CICD-SEC-04: Poisoned Pipeline Execution (PPE)**. (These match the upstream CodeQL canonical tags `external/cwe/cwe-077` and `external/cwe/cwe-020`.)
 
 ### Privileged Workflow Triggers
 
@@ -38,6 +38,7 @@ The following triggers are considered privileged because they run with write acc
 - **`issue_comment`**: Triggered by comments from any user, including external contributors
 - **`issues`**: Triggered by issue events, potentially from untrusted sources
 - **`discussion_comment`**: Triggered by discussion comments from any user
+- **`pull_request_review`**: The reviewer body is attacker-controlled and runs in the base-repo context with secrets. In the same-repo case the privilege resolves identically to `issue_comment`; in the fork-PR case secrets are not passed and `GITHUB_TOKEN` is read-only, but the `$GITHUB_ENV` write primitive still executes and a read-only token can still exfiltrate source — so the diagnostic remains load-bearing. (Consistent with the `pull_request_review` handling documented for `code-injection-critical`.)
 
 ### Example Vulnerable Workflow
 
@@ -194,7 +195,20 @@ The rule detects:
    - `github.event.comment.body`
    - And other user-controlled fields
 
-3. **Privileged workflow triggers** where the impact is critical
+3. **Multiline heredoc (`KEY<<EOF`) injection**: writing untrusted input inside a fixed-delimiter heredoc is exploitable when the attacker's value contains the delimiter line. For example:
+
+   ```yaml
+   # VULNERABLE: attacker can embed a line equal to "EOF" to close the
+   # heredoc early and then inject arbitrary KEY=VALUE / KEY<<EOF blocks
+   run: |
+     echo "PR_BODY<<EOF" >> "$GITHUB_ENV"
+     echo "${{ github.event.pull_request.body }}" >> "$GITHUB_ENV"
+     echo "EOF" >> "$GITHUB_ENV"
+   ```
+
+   The mitigation is a **randomized, unguessable delimiter** (e.g. `EOF_$(uuidgen)`) so the attacker cannot predict and forge the closing line — see *Alternative: Heredoc Syntax* above for the safe form.
+
+4. **Privileged workflow triggers** where the impact is critical
 
 ### Why This Pattern is Dangerous
 
@@ -241,7 +255,10 @@ Enable both rules (default) to catch these patterns.
 
 ### References
 
-- [CodeQL: Environment Variable Injection (Critical)](https://codeql.github.com/codeql-query-help/actions/actions-envvar-injection-critical/)
+- [CodeQL: Environment Variable Injection (Critical)](https://codeql.github.com/codeql-query-help/actions/actions-envvar-injection-critical/) — upstream canonical query (`Security severity: 9`; tags `external/cwe/cwe-077`, `external/cwe/cwe-020`)
+- [CWE-77: Command Injection](https://cwe.mitre.org/data/definitions/77.html)
+- [CWE-20: Improper Input Validation](https://cwe.mitre.org/data/definitions/20.html)
+- [Synacktiv: GitHub Actions Exploitation — Repo Jacking and Environment Manipulation](https://www.synacktiv.com/publications/github-actions-exploitation-repo-jacking-and-environment-manipulation)
 - [GitHub Security: Script Injection](https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#understanding-the-risk-of-script-injections)
 - [OWASP: Command Injection](https://owasp.org/www-community/attacks/Command_Injection)
 - [OWASP Top 10 CI/CD Security Risks](https://owasp.org/www-project-top-10-ci-cd-security-risks/)
