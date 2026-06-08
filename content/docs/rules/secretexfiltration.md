@@ -215,6 +215,8 @@ The allowlist is **per-command**, not flat. Each network command has its own all
 
 > **Note**: bare `github.com` is allowlisted only under `wget` — it is **not** trusted under `curl`, `http`, or `https`. To allow internal Vault / Artifactory / Nexus hosts, use the per-workflow `allowed-hosts` directive (below).
 
+> **This allowlist is a false-positive-reduction heuristic, not a security boundary.** Matching is by host (with a path prefix where one is specified), so it does **not** distinguish a legitimate destination from an attacker-controlled account or endpoint on the same domain — for example an attacker's own Slack/Discord webhook on `hooks.slack.com` / `discord.com/api`, or their own account on `codecov.io`. A secret sent to such a destination will **not** be flagged. Treat the allowlist as noise reduction for well-known CI services; rely on secret scoping, OIDC, and destination review for actual protection. (The allowlist does defend against suffix-spoofing such as `api.github.com.evil.com`, which is matched as untrusted.)
+
 ### Per-Workflow `allowed-hosts` Directive
 
 You can extend the allowlist on a per-workflow basis with a comment directive in the workflow file. The directive is parsed by the rule and merged with the built-in allowlist for that workflow only. Directive-sourced entries that are declared but never matched produce a **dead-allow** warning, and entries that fail to parse produce an **invalid-entry** warning — see the next two subsections.
