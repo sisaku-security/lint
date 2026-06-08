@@ -7,7 +7,7 @@ weight: 1
 
 This rule detects when workflows with privileged triggers check out untrusted code from pull requests, which can allow attackers to exfiltrate secrets or compromise the repository.
 
-The upstream CodeQL canonical query (`actions-untrusted-checkout-critical`) classifies this attack at `Security severity: 9.3 / Severity: error / Precision: very-high` and maps it to **CWE-829: Inclusion of Functionality from Untrusted Control Sphere**. sisakulint inherits the same attack model but currently emits **no in-message severity token** — the rule name has no `-critical`/`-medium` suffix and the diagnostic carries no `(critical)` token. Treat the CodeQL severity as the canonical reference until a sisakulint-side severity emit policy is finalized.
+CodeQL's published query (`actions-untrusted-checkout-critical`) classifies this attack at `Security severity: 9.3 / Severity: error / Precision: very-high` and maps it to **CWE-829: Inclusion of Functionality from Untrusted Control Sphere**. sisakulint addresses the same attack class but currently emits **no in-message severity token** — the rule name has no `-critical`/`-medium` suffix and the diagnostic carries no `(critical)` token. Treat the CodeQL severity as a cross-reference until a sisakulint-side severity emit policy is finalized.
 
 **Vulnerable Example:**
 
@@ -322,6 +322,6 @@ When this rule triggers:
 For more information on securing GitHub Actions workflows, see:
 - [GitHub Actions Security Best Practices](https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions)
 - [Preventing pwn requests](https://securitylab.github.com/research/github-actions-preventing-pwn-requests/) — GitHub Security Lab canonical research for this attack class
-- [CodeQL: `actions-untrusted-checkout-critical`](https://codeql.github.com/codeql-query-help/actions/actions-untrusted-checkout-critical/) — upstream canonical query (Severity 9.3, CWE-829)
+- [CodeQL: `actions-untrusted-checkout-critical`](https://codeql.github.com/codeql-query-help/actions/actions-untrusted-checkout-critical/) — CodeQL query (severity / CWE reference; Severity 9.3, CWE-829)
 - [Living Off the Pipeline (LOTP) catalog](https://github.com/boostsecurityio/lotp) — broader catalog of CI/CD attack vectors referenced by the CodeQL query
 - [OWASP CI/CD Security Top 10](https://owasp.org/www-project-top-10-ci-cd-security-risks/)

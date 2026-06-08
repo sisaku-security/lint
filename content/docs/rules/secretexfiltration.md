@@ -9,7 +9,7 @@ weight: 44
 
 The `secret-exfiltration` rule detects patterns where GitHub Actions secrets may be exfiltrated to external services via network commands. This helps identify potential security vulnerabilities where secrets could be stolen by malicious actors.
 
-> **Note on lineage:** This rule is a sisakulint-original design. The upstream CodeQL Actions query catalog has no equivalent network-command/argument-level secret-sink detector — the closest CodeQL query, *Excessive Secrets Exposure*, addresses over-broad `permissions:` scopes rather than per-argument secret sinks. Likewise, zizmor's `secrets-inherit` / `github-token-leak` audits target a materially different attack surface. The detection model described below was authored from scratch.
+> **Note on lineage:** This rule is a sisakulint-original design. The CodeQL Actions query catalog has no equivalent network-command/argument-level secret-sink detector — the closest CodeQL query, *Excessive Secrets Exposure*, addresses over-broad `permissions:` scopes rather than per-argument secret sinks. Likewise, zizmor's `secrets-inherit` / `github-token-leak` audits target a materially different attack surface. The detection model described below was authored from scratch.
 
 ## Rule ID
 

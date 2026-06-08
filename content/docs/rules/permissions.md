@@ -25,7 +25,7 @@ This rule enforces the principle of least privilege by validating permission set
 
 **Severity: Warning (CodeQL canonical: `Security severity: 5.0`, `Severity: warning`, `Precision: high`)**
 
-The rule itself currently emits no in-message severity token; the canonical severity above is inherited from the upstream CodeQL query (`actions-missing-workflow-permissions`).
+The rule itself currently emits no in-message severity token; the canonical severity above is referenced from CodeQL's query for this class (`actions-missing-workflow-permissions`).
 
 Misconfigured permissions in GitHub Actions workflows can lead to serious security issues:
 
@@ -35,7 +35,7 @@ Misconfigured permissions in GitHub Actions workflows can lead to serious securi
 4. **Supply Chain Attacks**: Write access to packages or releases can enable supply chain compromise
 5. **Compliance Violations**: Overly permissive workflows may violate security policies
 
-This aligns with **OWASP CI/CD Security Risk CICD-SEC-02: Inadequate Identity and Access Management** and **CWE-275: Permission Issues** (the canonical CWE tag from the upstream CodeQL query `actions-missing-workflow-permissions`).
+This aligns with **OWASP CI/CD Security Risk CICD-SEC-02: Inadequate Identity and Access Management** and **CWE-275: Permission Issues** (the CWE tag from CodeQL's query for this class, `actions-missing-workflow-permissions`).
 
 > Note: For organizations or repositories created before February 2023, the default `GITHUB_TOKEN` permissions are set to read-write. Newer repositories default to a more restricted scope. Explicit `permissions:` declarations are still the safest baseline regardless of repo age.
 
@@ -455,7 +455,7 @@ jobs:
 
 ### References
 
-- [CodeQL: `actions-missing-workflow-permissions`](https://codeql.github.com/codeql-query-help/actions/actions-missing-workflow-permissions/) — upstream canonical query (sisakulint deliberately ports this; CWE-275, `Security severity: 5.0`).
+- [CodeQL: `actions-missing-workflow-permissions`](https://codeql.github.com/codeql-query-help/actions/actions-missing-workflow-permissions/) — CodeQL query (severity / CWE reference; CWE-275, `Security severity: 5.0`). sisakulint models this rule on the CodeQL query.
 - [GitHub Docs: Automatic Token Authentication](https://docs.github.com/en/actions/security-guides/automatic-token-authentication)
 - [GitHub Docs: Permissions for GITHUB_TOKEN](https://docs.github.com/en/actions/security-guides/automatic-token-authentication#permissions-for-the-github_token)
 - [GitHub Security: Hardening for GitHub Actions](https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions)

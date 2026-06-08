@@ -17,7 +17,7 @@ This rule detects code injection vulnerabilities when untrusted input is used di
 
 ### Security Impact
 
-**Severity: Critical** — encoded via the `-critical` rule-name suffix and the `(critical)` token in emitted diagnostics. The upstream CodeQL query (`actions-code-injection-critical`) lists `Security severity: 9 / Severity: error / Precision: very-high`.
+**Severity: Critical** — encoded via the `-critical` rule-name suffix and the `(critical)` token in emitted diagnostics. CodeQL's query for this class (`actions-code-injection-critical`) lists `Security severity: 9 / Severity: error / Precision: very-high`.
 
 Code injection in privileged workflows represents the highest severity vulnerability in GitHub Actions:
 
@@ -26,11 +26,11 @@ Code injection in privileged workflows represents the highest severity vulnerabi
 3. **Repository Compromise**: Ability to modify code, create releases, or manipulate repository settings
 4. **Supply Chain Attack**: Compromised workflows can poison artifacts or deployments
 
-This vulnerability is classified under **CWE-94: Improper Control of Generation of Code ('Code Injection')**, together with the related **CWE-95: Improper Neutralization of Directives in Dynamically Evaluated Code ('Eval Injection')** and **CWE-116: Improper Encoding or Escaping of Output**. It aligns with OWASP CI/CD Security Risk **CICD-SEC-04: Poisoned Pipeline Execution (PPE)**. (The three-CWE tagging matches the upstream CodeQL canonical query.)
+This vulnerability is classified under **CWE-94: Improper Control of Generation of Code ('Code Injection')**, together with the related **CWE-95: Improper Neutralization of Directives in Dynamically Evaluated Code ('Eval Injection')** and **CWE-116: Improper Encoding or Escaping of Output**. It aligns with OWASP CI/CD Security Risk **CICD-SEC-04: Poisoned Pipeline Execution (PPE)**. (The three-CWE tagging matches CodeQL's query for this class.)
 
 ### Privileged Workflow Triggers
 
-The upstream CodeQL canonical query treats the following three triggers as privileged because they run with write access or secrets:
+CodeQL's query for this class treats the following three triggers as privileged because they run with write access or secrets:
 
 - **`pull_request_target`**: Runs with write permissions and secrets, but triggered by untrusted PRs
 - **`workflow_run`**: Executes with elevated privileges after another workflow completes
@@ -664,7 +664,7 @@ This rule has minimal performance impact:
 ### See Also
 
 **Industry References:**
-- [CodeQL: Code Injection (Critical)](https://codeql.github.com/codeql-query-help/actions/actions-code-injection-critical/) - CodeQL's detection pattern (canonical upstream; CWE-94 + CWE-95 + CWE-116)
+- [CodeQL: Code Injection (Critical)](https://codeql.github.com/codeql-query-help/actions/actions-code-injection-critical/) — CodeQL query (severity / CWE reference; CWE-94 + CWE-95 + CWE-116)
 - [GitHub Security Lab: Keeping your GitHub Actions and workflows secure — Untrusted input](https://securitylab.github.com/resources/github-actions-preventing-pwn-requests) - canonical research post cited by the CodeQL query
 - [GitHub: Security Hardening for GitHub Actions](https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions) - Official security guidance
 - [OWASP: CICD-SEC-04 - PPE](https://owasp.org/www-project-top-10-ci-cd-security-risks/CICD-SEC-04-Poisoned-Pipeline-Execution) - Attack patterns

@@ -17,7 +17,7 @@ This rule detects environment variable injection vulnerabilities when untrusted 
 
 ### Security Impact
 
-**Severity: Critical (9/10)** — anchored to the upstream CodeQL canonical query (`actions-envvar-injection-critical`, `Security severity: 9`).
+**Severity: Critical (9/10)** — referenced from CodeQL's query for this class (`actions-envvar-injection-critical`, `Security severity: 9`).
 
 Environment variable injection in privileged workflows represents a critical vulnerability in GitHub Actions:
 
@@ -27,7 +27,7 @@ Environment variable injection in privileged workflows represents a critical vul
 4. **Secret Exfiltration**: Injected variables can capture or override security-critical values
 5. **Persistence Across Steps**: Unlike in-memory code injection, environment variables persist throughout the job
 
-This vulnerability is classified as **CWE-77: Improper Neutralization of Special Elements used in a Command ('Command Injection')** and **CWE-20: Improper Input Validation**, and aligns with OWASP CI/CD Security Risk **CICD-SEC-04: Poisoned Pipeline Execution (PPE)**. (These match the upstream CodeQL canonical tags `external/cwe/cwe-077` and `external/cwe/cwe-020`.)
+This vulnerability is classified as **CWE-77: Improper Neutralization of Special Elements used in a Command ('Command Injection')** and **CWE-20: Improper Input Validation**, and aligns with OWASP CI/CD Security Risk **CICD-SEC-04: Poisoned Pipeline Execution (PPE)**. (These match CodeQL's CWE tags `external/cwe/cwe-077` and `external/cwe/cwe-020` for this query.)
 
 ### Privileged Workflow Triggers
 
@@ -256,7 +256,7 @@ Enable both rules (default) to catch these patterns.
 
 ### References
 
-- [CodeQL: Environment Variable Injection (Critical)](https://codeql.github.com/codeql-query-help/actions/actions-envvar-injection-critical/) — upstream canonical query (`Security severity: 9`; tags `external/cwe/cwe-077`, `external/cwe/cwe-020`)
+- [CodeQL: Environment Variable Injection (Critical)](https://codeql.github.com/codeql-query-help/actions/actions-envvar-injection-critical/) — CodeQL query (severity / CWE reference; `Security severity: 9`; tags `external/cwe/cwe-077`, `external/cwe/cwe-020`)
 - [CWE-77: Command Injection](https://cwe.mitre.org/data/definitions/77.html)
 - [CWE-20: Improper Input Validation](https://cwe.mitre.org/data/definitions/20.html)
 - [Synacktiv: GitHub Actions Exploitation — Repo Jacking and Environment Manipulation](https://www.synacktiv.com/publications/github-actions-exploitation-repo-jacking-and-environment-manipulation)
