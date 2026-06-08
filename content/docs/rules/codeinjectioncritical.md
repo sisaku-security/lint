@@ -13,7 +13,7 @@ This rule detects code injection vulnerabilities when untrusted input is used di
 - **Privileged Context Detection**: Identifies dangerous patterns in `pull_request_target`, `workflow_run`, `issue_comment`, and other privileged triggers
 - **Dual Script Detection**: Analyzes both `run:` scripts and `actions/github-script` for untrusted input
 - **Auto-fix Support**: Automatically converts unsafe patterns to use environment variables
-- **Zero False Positives** on env-var-safe patterns: already-safe patterns using environment variables are not flagged (this is false-*positive* suppression, not false-negative — the rule still detects every unsafe interpolation).
+- **Low false-positive rate** on env-var-safe patterns: already-safe patterns using environment variables are not flagged (this is false-*positive* suppression, not false-negative). By design the rule flags unsafe interpolation in privileged contexts; the suppression layer narrows the report set, it does not relax the detection target.
 
 ### Security Impact
 

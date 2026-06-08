@@ -195,20 +195,21 @@ The rule detects:
    - `github.event.comment.body`
    - And other user-controlled fields
 
-3. **Multiline heredoc (`KEY<<EOF`) injection**: writing untrusted input inside a fixed-delimiter heredoc is exploitable when the attacker's value contains the delimiter line. For example:
+3. **Privileged workflow triggers** where the impact is critical
 
-   ```yaml
-   # VULNERABLE: attacker can embed a line equal to "EOF" to close the
-   # heredoc early and then inject arbitrary KEY=VALUE / KEY<<EOF blocks
-   run: |
-     echo "PR_BODY<<EOF" >> "$GITHUB_ENV"
-     echo "${{ github.event.pull_request.body }}" >> "$GITHUB_ENV"
-     echo "EOF" >> "$GITHUB_ENV"
-   ```
+### Related Attack Pattern: Multiline Heredoc Delimiter Forgery
 
-   The mitigation is a **randomized, unguessable delimiter** (e.g. `EOF_$(uuidgen)`) so the attacker cannot predict and forge the closing line — see *Alternative: Heredoc Syntax* above for the safe form.
+A multiline-heredoc form (`KEY<<EOF`) with a fixed delimiter is exploitable when the attacker's value contains a line equal to the delimiter — the heredoc closes early and the attacker can inject arbitrary `KEY=VALUE` or `KEY<<EOF` blocks for subsequent steps. The example below is still **flagged** by this rule, because the untrusted interpolation on the second line is written to `$GITHUB_ENV`; what the rule catches is the interpolation-to-`$GITHUB_ENV` flow, **not** delimiter-forgery as such:
 
-4. **Privileged workflow triggers** where the impact is critical
+```yaml
+# Flagged: untrusted interpolation reaches $GITHUB_ENV
+run: |
+  echo "PR_BODY<<EOF" >> "$GITHUB_ENV"
+  echo "${{ github.event.pull_request.body }}" >> "$GITHUB_ENV"
+  echo "EOF" >> "$GITHUB_ENV"
+```
+
+The mitigation for the delimiter-forgery aspect is a **randomized, unguessable delimiter** (e.g. `EOF_$(uuidgen)`) so the attacker cannot predict and forge the closing line — see *Alternative: Heredoc Syntax* above for the safe form. (Because the rule detects the underlying `$GITHUB_ENV` write, both fixed- and randomized-delimiter examples remain flagged whenever they carry untrusted input — the UUID-delimiter form is a hardening measure against forgery, not a sisakulint-suppression escape.)
 
 ### Why This Pattern is Dangerous
 
