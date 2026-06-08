@@ -459,11 +459,11 @@ The code-injection-critical rule detects:
 
 ### Cross-Job Taint Resolution
 
-Taint propagation is not limited to consecutive steps inside one job. The rule also tracks `needs.<job>.outputs.<name>` references: if a producer job writes an output derived from untrusted input, every consumer job that references that output via `needs.<job>.outputs.<name>` inherits the taint and triggers detection. This analysis is performed in `VisitWorkflowPost` against the per-workflow taint map and runs across the whole workflow file rather than per-job.
+Taint propagation is not limited to consecutive steps inside one job. The rule also tracks `needs.<job>.outputs.<name>` references: if a producer job writes an output derived from untrusted input, every consumer job that references that output via `needs.<job>.outputs.<name>` inherits the taint and triggers detection. This analysis runs across the whole workflow file (per-workflow taint tracking), not per-job.
 
 ### Trigger Narrowing via Job-Level `if:`
 
-The rule does not blindly trust that a privileged workflow trigger means every job runs in a privileged context. The `JobTriggerAnalyzer` honors job-level `if:` conditions when computing the trigger set for each job — e.g. a job guarded by `if: github.event_name == 'push'` inside a `pull_request_target`-triggered workflow is analyzed under the `push` trigger only, and the critical-severity diagnostic is downgraded or suppressed accordingly. This reduces false positives for workflows that deliberately gate privileged paths.
+The rule does not blindly trust that a privileged workflow trigger means every job runs in a privileged context. The rule honors job-level `if:` conditions when computing the trigger set for each job — e.g. a job guarded by `if: github.event_name == 'push'` inside a `pull_request_target`-triggered workflow is analyzed under the `push` trigger only, and the critical-severity diagnostic is downgraded or suppressed accordingly. This reduces false positives for workflows that deliberately gate privileged paths.
 
 ### Safe Patterns
 

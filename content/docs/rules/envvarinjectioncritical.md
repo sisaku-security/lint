@@ -13,7 +13,7 @@ This rule detects environment variable injection vulnerabilities when untrusted 
 - **Privileged Context Detection**: Identifies dangerous patterns in `pull_request_target`, `workflow_run`, `issue_comment`, and other privileged triggers
 - **GITHUB_ENV Write Detection**: Analyzes scripts that write to `$GITHUB_ENV` file
 - **Auto-fix Support**: Automatically sanitizes inputs using `tr -d '\n'` to prevent newline injection
-- **Low false-positive rate**: via env-var isolation suppression (`isDefinedInEnv`) and trusted-input filtering (semantic analyzer) — already-safe patterns with proper sanitization are not flagged
+- **Low false-positive rate**: via env-var isolation suppression and trusted-input filtering — already-safe patterns with proper sanitization are not flagged
 
 ### Security Impact
 
