@@ -213,7 +213,7 @@ The allowlist is **per-command**, not flat. Each network command has its own all
 | `nslookup` | `8.8.8.8`, `1.1.1.1`, `localhost` |
 | `host` | `8.8.8.8`, `1.1.1.1` |
 
-> **Note on prior revisions**: earlier versions of this documentation listed `vault.*` (wildcard), `artifactory`, and `nexus` as allowlisted; those entries are **not** present in any command's allowlist and were incorrect, so they have been removed. Bare `github.com`, by contrast, **is** allowlisted — but only under `wget`; it is **not** trusted under `curl`, `http`, or `https`. Use the per-workflow `allowed-hosts` directive (below) to add your own internal Vault or Artifactory hosts.
+> **Note**: bare `github.com` is allowlisted only under `wget` — it is **not** trusted under `curl`, `http`, or `https`. To allow internal Vault / Artifactory / Nexus hosts, use the per-workflow `allowed-hosts` directive (below).
 
 ### Per-Workflow `allowed-hosts` Directive
 

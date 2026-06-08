@@ -240,7 +240,7 @@ Classifying `issue_comment` as privileged is correct in the sense that the workf
 - **Newer repositories (created after February 2023)** default to read-only `GITHUB_TOKEN` (Contents/Metadata/Packages). Other API surfaces (issues, actions, pulls) return `403` unless the workflow declares a `permissions:` block explicitly.
 - **Older repositories (created before February 2023)** default to `write-all`, in which case the token can mutate code, releases, and packages.
 
-Both cases are exploitable — the *primary* danger of the rule is secret exposure, not token writability. This nuance is verified live: `sisaku-security/workflow-probe:results/issue-comment-privileged.md` (2026-05-24) shows `GITHUB_TOKEN` resolves with length 40 under `issue_comment`, can read contents but returns `403` on issues / actions / pulls under the new default.
+Both cases are exploitable — the *primary* danger of the rule is secret exposure, not token writability. Under `issue_comment`, `GITHUB_TOKEN` resolves and can read repository contents, but on newer repositories (post-February-2023 default) it returns `403` on issues / actions / pulls unless the workflow declares those scopes explicitly.
 
 ### References
 

@@ -41,7 +41,7 @@ sisakulint additionally treats the following events as privileged for the purpos
 - **`issues`** — secrets resolved, write scope available
 - **`discussion_comment`** — secrets resolved, comment body is fully attacker-controlled
 - **`pull_request_review`** — *additionally detected by sisakulint*. CodeQL's canonical list does not include this event, but sisakulint flags it conservatively. The detection is justified by two cases:
-  - **Same-repo case**: secrets and `GITHUB_TOKEN` permissions resolve identically to `issue_comment` — verified live via `sisaku-security/workflow-probe:results/pull-request-review-privilege.md` (2026-05-24).
+  - **Same-repo case**: secrets and `GITHUB_TOKEN` permissions resolve identically to `issue_comment`.
   - **Fork-PR case**: secrets are *not* passed and `GITHUB_TOKEN` is read-only per GitHub's "Workflows in forked repositories" documentation. The shell evaluation of `${{ ... }}` in `run:` still happens (RCE primitive remains), and a read-only token can still exfiltrate source via the Contents API — so the diagnostic is still load-bearing.
 
 ### Example Vulnerable Workflow
@@ -107,7 +107,7 @@ $ sisakulint
               TITLE="${{ github.event.pull_request.title }}"
 ```
 
-> The shell-evaluation primitive that makes this dangerous is verified end-to-end on a live runner. See `sisaku-security/workflow-probe:results/codeinjection-issue-comment.md` (2026-05-24): a payload of `INJECT$(echo TEST)END` in the vulnerable pattern produced `INJECTTESTEND` (shell evaluated `$(...)`), while the env-var-routed safe pattern preserved the literal `INJECT$(echo TEST)END`. The auto-fix design is therefore not a paper claim — it neutralizes the injection on the same runner that would otherwise execute it.
+> The danger is that `${{ ... }}` is interpolated into the shell **before** execution: an untrusted value of `INJECT$(echo TEST)END` is shell-evaluated to `INJECTTESTEND` (the `$(...)` runs). Routing the value through an environment variable and referencing it as a native shell variable (`$VAR`) instead preserves it as the literal `INJECT$(echo TEST)END` — which is why the env-var auto-fix neutralizes the injection.
 
 ### Auto-fix Support
 

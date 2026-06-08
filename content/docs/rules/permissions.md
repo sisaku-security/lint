@@ -82,7 +82,7 @@ At the workflow or job level, you can set blanket permissions. Only the followin
 - **`write-all`**: Write access to all scopes (avoid if possible)
 - **`{}` (empty object)**: Explicitly deny all permissions (use this when you want a workflow with no API access)
 
-> Note: A previous version of this documentation listed `permissions: none` as a valid top-level value. This was incorrect: the runner rejects `permissions: none` at the parse stage. To deny all permissions, use `permissions: {}`. Verified via GitHub's official documentation and live runner probes (`sisaku-security/workflow-probe:results/permissions-none.md`, 2026-05-24). The GitHub-official wording is: "You can use the following syntax to disable permissions for all of the available permissions: `permissions: {}`".
+> Note: `permissions: none` is **not** valid at the top level — the runner rejects it at the parse stage. To deny all permissions, use `permissions: {}`. (GitHub's official wording: "You can use the following syntax to disable permissions for all of the available permissions: `permissions: {}`".)
 
 ### Example Vulnerable Workflow
 
