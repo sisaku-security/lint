@@ -105,7 +105,7 @@ The rule performs a three-pass analysis. The pseudocode below mirrors the actual
 // strings.HasPrefix(action.Uses.Value, "actions/checkout@")
 // → isUntrustedPRRef(refValue) → IsUnsafeCheckoutRef(refValue)
 //   does a CASE-INSENSITIVE substring scan against a list of
-//   ~8 known unsafe substrings (see "Untrusted Ref Patterns"
+//   10 known unsafe substrings (see "Untrusted Ref Patterns"
 //   below), AND treats any ${{ ... }} expression not present in
 //   the safe-patterns allowlist as unsafe ("conservative
 //   unknown expression" rule, see section below).
@@ -139,16 +139,31 @@ The rule performs a three-pass analysis. The pseudocode below mirrors the actual
 
 #### Untrusted Ref Patterns
 
-The rule's `IsUnsafeCheckoutRef` performs a **case-insensitive substring scan** over the literal text of the `ref:` input. Any ref whose value contains one of the following substrings is flagged. The list is illustrative of the dangerous shapes — the rule itself does not require an exact match.
+The rule's `IsUnsafeCheckoutRef` performs a **case-insensitive substring scan** over the literal text of the `ref:` input. Any ref whose value contains one of the following substrings is flagged. The list below is **exhaustive** — these are the 10 substrings the rule actually scans for (defined as `unsafePatternsLower` in `cachepoisoningutil.go`).
 
-- `github.head_ref`
-- `github.event.pull_request.head.ref`
+**Full GitHub-context expressions** (the canonical PR-head refs):
+
 - `github.event.pull_request.head.sha`
-- `github.event.pull_request.head.label`
+- `github.event.pull_request.head.ref`
+- `github.head_ref`
+
+**Pull-request ref namespace**:
+
 - `refs/pull/` (e.g. `refs/pull/123/head`)
-- `head_sha` (any `*.head_sha` reference)
-- `head-sha` (hyphenated variant from third-party actions)
-- Any other expression of the form `github.event.*.head.*`
+
+**Dotted-suffix variants** (catches third-party action outputs that surface PR head info as `<step>.outputs.head_sha`, `<step>.outputs.head.ref`, etc.):
+
+- `.head.sha`
+- `.head.ref`
+- `.head_sha`
+- `.head_ref`
+
+**Hyphenated variants** (third-party actions that expose PR head info via kebab-case identifiers):
+
+- `head-sha`
+- `head-ref`
+
+> **Note on `head.label` and other head-derived refs**: `github.event.pull_request.head.label` is **not** in this substring list — the substring scan operates on literal text and does not interpret `*` wildcards (so a phrase like "any `github.event.*.head.*`" would be a routing fiction). However, `head.label` and any other `${{ ... }}` expression that is not on the safe-patterns allowlist is still flagged via the **conservative-unknown-expression** rule below. **Net coverage is therefore not weakened** by listing the substring scan exhaustively — `head.label` and similar head-derived expressions still flag, just through the conservative-unknown path rather than the substring scan.
 
 In addition, a **conservative-unknown-expression** rule applies (see next section).
 
