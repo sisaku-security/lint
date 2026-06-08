@@ -21,7 +21,7 @@ Severity is decided **per argument**, not per command. The rule emits two levels
 
 - **Critical** is emitted when **both** of the following hold:
   - The command is `curl` or `wget`, AND
-  - The secret rides on a **data flag** — for `curl`: `-d` / `--data` / `--data-raw` / `-F` / `--form` / `-H` / `--header`; for `wget`: `--post-data` / `--post-file` / `--header`.
+  - The secret rides on a **data flag** — for `curl`: `-d` / `--data` / `--data-raw` / `--data-binary` / `--data-urlencode` / `-F` / `--form` / `-H` / `--header`; for `wget`: `--post-data` / `--post-file` / `--header`.
 - **High** is emitted in every other case the rule observes a secret leaving via a network command — including curl/wget when the secret is on a non-data argument (e.g. embedded in the URL), and any use of `http` / `https` (HTTPie) / `nc` / `netcat` / `ncat` / `telnet` / `socat` / `dig` / `nslookup` / `host`. These commands have no `dataFlags` table; their severity always degrades to **High** because the rule does not attempt argument classification on them.
 
 The `-X POST` flag is **not** used as a signal — the rule keys on the data-flag presence of the secret, not the HTTP method.
@@ -181,7 +181,7 @@ The "Risk Level" column shows the severity emitted **when a secret reaches a dat
 
 | Command | Risk when secret is on a data flag | Data flags |
 |---------|------------------------------------|------------|
-| `curl` | Critical | `-d`, `--data`, `--data-raw`, `-F`, `--form`, `-H`, `--header` |
+| `curl` | Critical | `-d`, `--data`, `--data-raw`, `--data-binary`, `--data-urlencode`, `-F`, `--form`, `-H`, `--header` |
 | `wget` | Critical | `--post-data`, `--post-file`, `--header` |
 | `http` / `https` (HTTPie) | High | (no per-flag classification) |
 | `nc` / `netcat` / `ncat` | High | (piped/stdin input — see *Stdin/Pipe Sink Detection* below) |
@@ -201,19 +201,19 @@ When a single command invocation has multiple destination arguments (e.g. `curl 
 
 ## Trusted Domains (Allowlisted)
 
-The following destinations are in the built-in `legitPatterns` allowlist and do not trigger alerts:
+The allowlist is **per-command**, not flat. Each network command has its own `legitPatterns` set in `pkg/core/secretexfiltration.go`; a host trusted under `curl` is not automatically trusted under `wget` or HTTPie. For example, `api.telegram.org` is allowlisted only for `curl` — using `http` / `https` (HTTPie) to reach the same host still flags.
 
-- GitHub: `api.github.com`, `githubusercontent.com`
-- Package Registries: `registry.npmjs.org`, `pypi.org`, `rubygems.org`, `crates.io`, `nuget.org`
-- Container Registries: `ghcr.io`, `docker.io`, `gcr.io`, `ecr.aws`, `azurecr.io`
-- CI/CD Services: `codecov.io`, `coveralls.io`, `circleci.com`, `travis-ci.com`
-- Monitoring: `sentry.io`, `datadoghq.com`, `newrelic.com`
-- Notifications: `hooks.slack.com`, `slack.com/api`, `discord.com/api`, `api.telegram.org`
-- Security Tools: `snyk.io`, `sonarcloud.io`
-- Infrastructure: `app.terraform.io`, `hashicorp`
-- Artifact Management: `jfrog.io`, `sonatype.org`
+| Command | Allowlisted destinations |
+|---------|--------------------------|
+| `curl` | `api.github.com`, `uploads.github.com`, `registry.npmjs.org`, `pypi.org`, `upload.pypi.org`, `rubygems.org`, `crates.io`, `nuget.org`, `api.nuget.org`, `packagist.org`, `pkg.go.dev`, `maven.org`, `hub.docker.com`, `ghcr.io`, `docker.io`, `gcr.io`, `ecr.aws`, `azurecr.io`, `jfrog.io`, `sonatype.org`, `slack.com/api`, `hooks.slack.com`, `discord.com/api`, `api.telegram.org`, `codecov.io`, `coveralls.io`, `codeclimate.com`, `sonarcloud.io`, `circleci.com`, `travis-ci.com`, `snyk.io`, `sentry.io`, `datadoghq.com`, `newrelic.com`, `pagerduty.com`, `opsgenie.com`, `app.terraform.io`, `hashicorp.com` (~38 entries; bare `github.com` is **not** in this list) |
+| `wget` | `github.com`, `githubusercontent.com` only |
+| `http` / `https` (HTTPie) | `api.github.com`, `uploads.github.com` only |
+| `nc` / `netcat` / `ncat` / `telnet` / `socat` | (none — every destination is flagged) |
+| `dig` | `@8.8.8.8`, `@1.1.1.1`, `localhost` |
+| `nslookup` | `8.8.8.8`, `1.1.1.1`, `localhost` |
+| `host` | `8.8.8.8`, `1.1.1.1` |
 
-> ⚠️ Previous versions of this documentation listed `github.com` (bare), `vault.*` (wildcard), `artifactory`, and `nexus`. These entries are **not** in the built-in allowlist and were incorrect; they have been removed. Use the per-workflow allowed-hosts directive (below) to add your own internal Vault or Artifactory hosts.
+> **Note on prior revisions**: earlier versions of this documentation listed `vault.*` (wildcard), `artifactory`, and `nexus` as allowlisted; those entries are **not** present in any command's `legitPatterns` and were incorrect, so they have been removed. Bare `github.com`, by contrast, **is** allowlisted — but only under `wget` (see `pkg/core/secretexfiltration.go:146`); it is **not** trusted under `curl`, `http`, or `https`. Use the per-workflow `allowed-hosts` directive (below) to add your own internal Vault or Artifactory hosts.
 
 ### Per-Workflow `allowed-hosts` Directive
 
