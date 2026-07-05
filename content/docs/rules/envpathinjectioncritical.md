@@ -13,11 +13,11 @@ This rule detects PATH injection vulnerabilities when untrusted input is written
 - **Privileged Context Detection**: Identifies dangerous patterns in `pull_request_target`, `workflow_run`, `issue_comment`, and other privileged triggers
 - **GITHUB_PATH Write Detection**: Analyzes scripts that write to `$GITHUB_PATH` file
 - **Auto-fix Support**: Automatically validates paths using `realpath` before writing to $GITHUB_PATH
-- **Zero False Positives**: Does not flag already-safe patterns with proper path validation
+- **Low false-positive rate**: via env-var isolation suppression and trusted-input filtering — already-safe patterns with proper path validation are not flagged
 
 ### Security Impact
 
-**Severity: Critical (9/10)**
+**Severity: Critical (9/10)** — referenced from CodeQL's query for this class (`actions-envpath-injection-critical`, `Security severity: 9`).
 
 PATH injection in privileged workflows represents a critical vulnerability in GitHub Actions:
 
@@ -38,6 +38,7 @@ The following triggers are considered privileged because they run with write acc
 - **`issue_comment`**: Triggered by comments from any user, including external contributors
 - **`issues`**: Triggered by issue events, potentially from untrusted sources
 - **`discussion_comment`**: Triggered by discussion comments from any user
+- **`pull_request_review`**: The review body is attacker-controlled and runs in the base-repo context. In the same-repo case the privilege resolves identically to `issue_comment`; in the fork-PR case secrets are not passed and `GITHUB_TOKEN` is read-only, but the `$GITHUB_PATH` write primitive still executes — so the diagnostic remains load-bearing. (Consistent with the `pull_request_review` handling documented for `envvar-injection-critical`.)
 
 ### Example Vulnerable Workflow
 
@@ -155,10 +156,18 @@ sisakulint can automatically fix this vulnerability:
 ```yaml
 - name: Add tools to PATH
   env:
-    PR_HEAD_REF_PATH: ${{ github.event.pull_request.head.ref }}
+    PR_REF: ${{ github.event.pull_request.head.ref }}
   run: |
-    echo "$(realpath "$PR_HEAD_REF_PATH")/bin" >> "$GITHUB_PATH"
+    echo "$(realpath "$PR_REF")/bin" >> "$GITHUB_PATH"
 ```
+
+**Known Limitation**: The rule may not detect indirect injection through intermediate shell variables:
+```yaml
+run: |
+  TEMP=${{ github.event.pull_request.title }}   # code-injection detects
+  echo "$TEMP/bin" >> "$GITHUB_PATH"            # envpath-injection may miss
+```
+Enable both rules (default) to catch these patterns.
 
 ### Detection Details
 
@@ -206,7 +215,8 @@ PATH injection in privileged workflows can lead to:
 
 ### References
 
-- [CodeQL: PATH Injection (Critical)](https://codeql.github.com/codeql-query-help/actions/actions-envpath-injection-critical/)
+- [CodeQL: PATH Injection (Critical)](https://codeql.github.com/codeql-query-help/actions/actions-envpath-injection-critical/) — CodeQL query (severity reference; `Security severity: 9`; included in the default `actions-code-scanning.qls` scanning suite)
+- [Synacktiv: GitHub Actions Exploitation — Repo Jacking and Environment Manipulation](https://www.synacktiv.com/publications/github-actions-exploitation-repo-jacking-and-environment-manipulation)
 - [GitHub Security: Script Injection](https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#understanding-the-risk-of-script-injections)
 - [OWASP: Uncontrolled Search Path Element](https://cwe.mitre.org/data/definitions/427.html)
 - [OWASP Top 10 CI/CD Security Risks](https://owasp.org/www-project-top-10-ci-cd-security-risks/)
