@@ -86,6 +86,8 @@ sisakulint -fix dry-run
 sisakulint -fix on
 ```
 
+> **Note on tokens**: detection itself performs no API calls — references that are not full commit SHAs are always flagged, with or without a token. The **auto-fix** resolves tags to commit SHAs via the GitHub API, so it needs a GitHub token (`GITHUB_TOKEN`, `GH_TOKEN`, `SISAKULINT_GITHUB_TOKEN`, or `-github-token`) to work reliably; without one it is limited to 60 requests/hour.
+
 After auto-fix, the workflow will use full commit SHAs:
 
 ```yaml

@@ -13,6 +13,8 @@ weight: 1
 
 This rule detects GitHub Actions with known security vulnerabilities using the GitHub Security Advisories database. It helps identify actions that have been reported with CVEs or other security advisories and suggests upgrading to patched versions.
 
+> **⚠️ Reliable operation requires a GitHub token.** Advisory lookups use the GitHub API (60 requests/hour unauthenticated, 5,000/hour with a token). When a lookup fails — missing token, rate limit, or network error — the rule **silently skips the check and reports no findings** for the affected actions (fail-open). A clean result under rate limiting is therefore not proof that your actions are advisory-free. sisakulint prints a startup warning when no token is detected.
+
 ### Security Impact
 
 **Severity: Varies (inherits from advisory CVSS score)**
@@ -110,7 +112,7 @@ This rule requires GitHub API access to fetch security advisories. Authenticatio
 3. `gh auth token` command (GitHub CLI)
 4. Git credential helper
 
-Without authentication, the rule may be rate-limited and skip vulnerability checks.
+Without authentication the API allows only 60 requests/hour; failed or rate-limited lookups are skipped silently with no finding emitted (see the notice at the top of this page).
 
 ### Skipped Actions
 
