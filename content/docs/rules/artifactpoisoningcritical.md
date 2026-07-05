@@ -23,7 +23,7 @@ This rule detects unsafe artifact download practices that may allow artifact poi
 
 ### Security Impact
 
-**Severity: Critical (9/10)**
+**Severity: Critical (9/10)** — referenced from CodeQL's query for this class (`actions-artifact-poisoning-critical`, `Security severity: 9`, `Precision: very-high`; the medium variant maps to CodeQL's `Security severity: 5.0`).
 
 Artifact poisoning represents a critical security vulnerability in CI/CD pipelines:
 
@@ -91,8 +91,14 @@ Running sisakulint will detect unsafe artifact downloads:
 ```bash
 $ sisakulint
 
-.github/workflows/deploy.yaml:12:9: artifact is downloaded without specifying a safe extraction path at step "Download build artifacts". This may allow artifact poisoning where malicious files overwrite existing files. Consider extracting to a temporary folder like '${{ runner.temp }}/artifacts' to prevent overwriting existing files. See https://codeql.github.com/codeql-query-help/actions/actions-artifact-poisoning-critical/ [artifact-poisoning]
+.github/workflows/deploy.yaml:12:9: artifact is downloaded without specifying a safe extraction path at step "Download build artifacts". This may allow artifact poisoning where malicious files overwrite existing files. Consider extracting to a temporary folder like '${{ runner.temp }}/artifacts' to prevent overwriting existing files. See https://sisaku-security.github.io/lint/docs/rules/artifactpoisoningcritical/ [artifact-poisoning-critical]
      12 👈|      - name: Download build artifacts
+```
+
+When a step sets an explicit but unsafe `path`, the message variant is:
+
+```bash
+.github/workflows/deploy.yaml:14:9: artifact is downloaded to an unsafe path "./dist" at step "Download build artifacts". Workspace-relative paths allow malicious artifacts to overwrite source code, scripts, or dependencies, creating a critical supply chain vulnerability. Extract to '${{ runner.temp }}/artifacts' instead. See https://sisaku-security.github.io/lint/docs/rules/artifactpoisoningcritical/ [artifact-poisoning-critical]
 ```
 
 ### Auto-fix Support
@@ -106,6 +112,8 @@ sisakulint -fix dry-run
 # Apply fixes
 sisakulint -fix on
 ```
+
+**Auto-fix scope**: the fix is applied only when `with.path` is **empty or missing** (it inserts `path: ${{ runner.temp }}/artifacts`). For a non-empty unsafe path, the rule reports the finding but does not rewrite the value, to avoid breaking intentional configurations — change those paths manually.
 
 After auto-fix, artifacts are extracted to an isolated temporary directory:
 
@@ -298,7 +306,9 @@ steps:
 
 ### OS-Aware Path Validation
 
-The rule infers the runner OS from `runs-on` labels and applies OS-specific path safety rules. This prevents false positives (e.g., flagging `/tmp/` as unsafe on Linux) and catches OS-specific risks (e.g., allowing `C:\` paths on Linux).
+The rule infers the runner OS from `runs-on` labels and applies OS-specific path safety rules. This prevents false positives (e.g., flagging `/tmp/` as unsafe on Linux) while staying conservative wherever a path's actual location cannot be established statically.
+
+**Checkout requirement (intentional scope gate):** the rule only evaluates jobs that contain an `actions/checkout` step. Jobs without a checkout — e.g., publish-only jobs that download an artifact and push it to PyPI or npm — are skipped without any message, because the file-overwrite primitive this rule targets requires checked-out source files to overwrite. Keep this in mind when debugging why a job is not flagged.
 
 #### OS Detection
 
@@ -316,9 +326,11 @@ The rule infers the runner OS from `runs-on` labels and applies OS-specific path
 | `${{ runner.temp }}/...` | Safe | Safe | Safe |
 | `/tmp/...` | Safe | Unsafe | Safe |
 | Other Unix paths (`/var/...`) | Safe | Unsafe | Unsafe |
-| Windows paths (`C:\...`, `D:/...`) | Unsafe | Safe | Unsafe |
+| Windows paths (`C:\...`, `D:/...`) | Unsafe | **Unsafe** | Unsafe |
 
 When the OS is unknown (e.g., matrix expressions or self-hosted runners without OS labels), the rule applies a conservative policy where only `${{ runner.temp }}` and `/tmp` are considered safe.
+
+Drive-rooted Windows paths (`C:\...`, `D:/...`) are treated as unsafe on **every** OS, including Windows runners: such a path can point into the checkout workspace (e.g., `C:\actions-runner\_work\...`), and the workspace root is not known statically, so the rule cannot prove the path is isolated. Use `${{ runner.temp }}` on Windows instead.
 
 #### Example: Cross-Platform Workflow
 
@@ -374,6 +386,29 @@ The artifact-poisoning rule detects the following unsafe patterns:
        path: .  # Current directory - unsafe
    ```
 
+4. **Relative paths** (`./...`, `../...`):
+   ```yaml
+   path: ./dist        # Resolves inside the workspace - unsafe
+   path: ../artifacts  # Traversal - unsafe
+   ```
+
+5. **Paths containing the workspace expression or variable**:
+   ```yaml
+   path: ${{ github.workspace }}/artifacts  # Unsafe
+   path: $GITHUB_WORKSPACE/artifacts        # Unsafe
+   ```
+
+6. **Drive-rooted Windows paths** (unsafe on every OS, see the OS table above):
+   ```yaml
+   path: C:\Temp\artifacts  # Unsafe - may point into the runner workspace
+   ```
+
+7. **Non-`/tmp`, non-`/var` Unix absolute paths** (on Linux/macOS runners):
+   ```yaml
+   path: /home/runner/work/repo/artifacts  # Unsafe - inside the workspace
+   path: /opt/artifacts                    # Unsafe - not a recognized temp location
+   ```
+
 ### Safe Patterns
 
 The rule recognizes these patterns as safe:
@@ -392,6 +427,21 @@ The rule recognizes these patterns as safe:
      with:
        name: my-artifact
        path: ${{ runner.temp }}/my-safe-location
+   ```
+
+3. **Environment-variable form of the runner temp directory**:
+   ```yaml
+   path: $RUNNER_TEMP/artifacts  # Equivalent to ${{ runner.temp }}
+   ```
+
+4. **`/tmp/...`** on Linux/macOS runners (also accepted when the OS is unknown):
+   ```yaml
+   path: /tmp/artifacts
+   ```
+
+5. **`/var/...`** on Linux/macOS runners:
+   ```yaml
+   path: /var/artifacts
    ```
 
 ### Integration with GitHub Security Features
