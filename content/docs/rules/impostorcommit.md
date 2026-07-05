@@ -6,7 +6,9 @@ bookToc: true
 
 ### Impostor Commit Rule Overview
 
-This rule detects **impostor commits** - commits that exist in the GitHub fork network but not in any branch or tag of the specified repository. This is a **supply chain attack vector** (CVSS 9.8) where attackers create malicious commits in forks and trick users into referencing them as if they were from the original repository.
+This rule detects **impostor commits** - commits that exist in the GitHub fork network but not in any branch or tag of the specified repository. This is a **supply chain attack vector** (CVSS 9.8; sisakulint's own scoring — no upstream scanner publishes a score for this class) where attackers create malicious commits in forks and trick users into referencing them as if they were from the original repository.
+
+> **⚠️ Requires a GitHub token to operate.** This rule verifies commits via the GitHub API. Without a token it silently emits **no findings** — all verification paths fail open, even for public repositories, and no warning is printed for this rule. Set the `GITHUB_TOKEN`, `GH_TOKEN`, or `SISAKULINT_GITHUB_TOKEN` environment variable, or pass `-github-token`, before relying on a clean result. The example output below assumes a token is configured.
 
 **Vulnerable Example:**
 
@@ -26,7 +28,7 @@ jobs:
 **Detection Output:**
 
 ```bash
-vulnerable.yaml:9:9: potential impostor commit detected: the commit 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef' is not found in any branch or tag of 'actions/checkout'. This could be a supply chain attack where an attacker created a malicious commit in a fork. Verify the commit exists in the official repository or use a known tag instead. See: https://www.chainguard.dev/unchained/what-the-fork-imposter-commits-in-github-actions-and-ci-cd for more details [impostor-commit]
+vulnerable.yaml:9:9: potential impostor commit detected: the commit 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef' is not found in any branch or tag of 'actions/checkout'. This could be a supply chain attack where an attacker created a malicious commit in a fork. Verify the commit exists in the official repository or use a known tag instead. See: https://www.chainguard.dev/unchained/what-the-fork-imposter-commits-in-github-actions-and-ci-cd [impostor-commit]
       9 👈|      - uses: actions/checkout@deadbeefdeadbeefdeadbeefdeadbeefdeadbeef
 ```
 
@@ -114,7 +116,7 @@ The rule implements a 5-stage verification pipeline. Each stage is an independen
 
 Fetches up to 500 tags (5 pages × 100) via `getTags()` and compares each tag's HEAD SHA against the target. Also records the latest semver tag for auto-fix suggestions.
 
-**Important (since PR #402):** A tag match alone no longer clears the commit as legitimate. Even if the target SHA matches a tag, the rule proceeds to verify that the commit is **reachable from the default branch** (Stage 4). This prevents fake tags — tags created by an attacker pointing to fork commits — from bypassing detection. The auto-fix logic also excludes tags whose commits are not reachable from the default branch, ensuring fake tags are never suggested as replacements.
+**Important (since PR #402):** A tag match alone no longer clears the commit as legitimate. Even if the target SHA matches a tag, the rule proceeds to verify that the commit is **reachable from the default branch** (Stage 4). This prevents fake tags — tags created by an attacker pointing to fork commits — from bypassing detection. The auto-fix logic also excludes tags that point to the target SHA itself, ensuring a suspicious tag is never suggested as the replacement for its own commit.
 
 ```go
 tags := rule.getTags(ctx, client, owner, repo)
@@ -177,9 +179,15 @@ for _, tag := range tags[:maxTagCompareCommits] {
 }
 ```
 
-*Fail-open:* If all tag comparisons fail (e.g., rate-limited), verification returns `isImpostor: false`.
+*Fail-open:* This stage distinguishes two cases: if **no comparable tag was available** (e.g., the repository has no usable tags), verification proceeds to the final verdict; if comparisons were attempted and **all of them failed** (e.g., rate-limited), verification returns `isImpostor: false`.
 
 **Final verdict:** If all 5 stages pass without confirming legitimacy, the commit is flagged as an impostor.
+
+**Operational notes:**
+
+- Each commit verification is bounded by a **30-second timeout**; on timeout the result fails open (not flagged).
+- The rule requires connectivity to `api.github.com`. In an **air-gapped or network-restricted CI**, every path fails open and the rule silently reports nothing.
+- API responses (tags, branches, comparisons) are cached **per process only** — repeated lint runs in CI re-fetch them on every invocation.
 
 ### Detection Logic Explanation
 
@@ -229,6 +237,7 @@ False positives can occur in these scenarios:
 3. **Rate limiting**
    - GitHub API rate limits may prevent verification
    - All API failure paths fail open — the rule will NOT flag a commit as impostor when the API is unavailable
+   - An authenticated token raises the GitHub API rate limit from **60 to 5,000 requests/hour**, which matters when linting workflows that reference many actions
 
 4. ~~**Non-default branch HEAD commits**~~ *(Fixed)*
    - Previously, commits at the HEAD of non-default branches (e.g., `stable`, `release/v2`) could be falsely flagged
@@ -256,6 +265,11 @@ This rule supports automatic fixing. When you run sisakulint with the `-fix on` 
 - Identifies the latest semver tag (e.g., `v4.1.1`)
 - Fetches the commit SHA for that tag
 - Replaces the action reference with the valid SHA and tag comment
+
+**Auto-fix caveats:**
+- Tag selection **prefers `v`-prefixed semver tags** but falls back to the first tag that does not point at the flagged SHA — it is not a strict semver-ordered choice, so verify the suggested version.
+- If the repository has **no usable latest tag**, the auto-fix silently makes no change (the finding is still reported).
+- If resolving the tag's commit SHA fails (API error, missing token), the auto-fix returns an error instead of rewriting the reference.
 
 **Example:**
 
