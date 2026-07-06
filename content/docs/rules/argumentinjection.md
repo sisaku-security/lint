@@ -49,8 +49,11 @@ Detects argument injection in **normal workflow triggers**:
 - `push`
 - `schedule`
 - `workflow_dispatch`
+- `pull_request_review`
 
 These triggers have limited permissions, but argument injection can still lead to information disclosure or workflow manipulation.
+
+`pull_request_review` carries attacker-controlled input (the review body), but this rule intentionally classifies it as medium rather than critical: the workflow runs on the pull request merge ref, and runs triggered from forked pull requests receive a read-only `GITHUB_TOKEN` and no secrets. Note that `code-injection-critical` treats `pull_request_review` as critical; the difference between the two rules is intentional.
 
 ## Dangerous Commands
 
@@ -153,6 +156,20 @@ The rule provides automatic fixes that:
     PR_REF: ${{ github.event.pull_request.head.ref }}
 ```
 
+### Embedded Expressions
+
+The `--` marker is added only when the untrusted value is a standalone argument. When the expression is embedded inside a larger token — for example a URL path — the auto-fix applies quoting only:
+
+```yaml
+# Before
+- run: curl https://api.example.com/${{ github.event.pull_request.title }}
+
+# After: quoting only, no -- (the value is part of the URL token)
+- run: curl https://api.example.com/"$PR_TITLE"
+  env:
+    PR_TITLE: ${{ github.event.pull_request.title }}
+```
+
 ## Why End-of-Options (`--`) Matters
 
 Most Unix commands support `--` as a delimiter that marks the end of command options:
@@ -171,6 +188,8 @@ Common commands supporting `--`:
 - `curl` - URL arguments
 - `tar` - File arguments
 - Most GNU/BSD utilities
+
+Some commands do **not** support `--` (or give it different semantics): `docker` (subcommand-based), `python`/`python3` (`-c` ignores it), `node`, `ruby` (`-e` ignores it), `php`. For these commands the auto-fix applies environment-variable quoting only, without inserting `--`.
 
 ## Untrusted Inputs
 
@@ -201,6 +220,7 @@ The following GitHub Actions contexts are considered untrusted:
 
 ## References
 
+- [CWE-88: Improper Neutralization of Argument Delimiters in a Command ('Argument Injection')](https://cwe.mitre.org/data/definitions/88.html)
 - [GitHub Actions Security Hardening](https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions)
 - [OWASP Command Injection](https://owasp.org/www-community/attacks/Command_Injection)
 - [Git Argument Injection](https://git-scm.com/docs/git#Documentation/git.txt---end-of-options)
