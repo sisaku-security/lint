@@ -11,8 +11,10 @@ The Request Forgery rule detects Server-Side Request Forgery (SSRF) vulnerabilit
 
 ## Rule Variants
 
-- **request-forgery-critical**: Detects SSRF vulnerabilities in workflows with privileged triggers (`pull_request_target`, `workflow_run`, `issue_comment`)
-- **request-forgery-medium**: Detects SSRF vulnerabilities in workflows with normal triggers (`pull_request`, `push`, `schedule`)
+- **request-forgery-critical**: Detects SSRF vulnerabilities in workflows with privileged triggers (`pull_request_target`, `workflow_run`, `issue_comment`, `issues`, `discussion_comment`)
+- **request-forgery-medium**: Detects SSRF vulnerabilities in workflows with normal triggers (`pull_request`, `push`, `schedule`, `pull_request_review`, etc.)
+
+`pull_request_review` carries attacker-controlled input (the review body), but this rule intentionally classifies it as medium rather than critical: the workflow runs on the pull request merge ref, and runs triggered from forked pull requests receive a read-only `GITHUB_TOKEN` and no secrets.
 
 ## What It Detects
 
@@ -38,8 +40,9 @@ The rule detects when untrusted user input is used in network request commands:
 Direct references to cloud metadata service URLs are flagged:
 
 - `169.254.169.254` - AWS/GCP/Azure metadata
-- `metadata.google.internal` - GCP metadata
+- `metadata.google` - GCP metadata (substring match, so `metadata.google.internal` and similar forms are covered)
 - `169.254.170.2` - AWS ECS metadata
+- `fd00:ec2::254` - AWS metadata (IPv6; the bracketed URL form `[fd00:ec2::254]` is also matched)
 - `100.100.100.200` - Alibaba Cloud metadata
 - `192.0.0.192` - Oracle Cloud metadata
 
@@ -136,6 +139,8 @@ Direct references to cloud metadata service URLs are flagged:
     curl "$INPUT_URL"
 ```
 
+Note: The cloud-metadata check matches the addresses listed above as plain substrings anywhere in a script. Lines that merely *list* metadata addresses in order to block them (like the `BLOCKED` variable in this pattern) are currently also flagged. This is a known limitation of the current detection and is under discussion.
+
 ## Auto-Fix
 
 The rule provides auto-fix that moves untrusted expressions to environment variables:
@@ -154,6 +159,26 @@ The rule provides auto-fix that moves untrusted expressions to environment varia
     ISSUE_BODY: ${{ github.event.issue.body }}
   run: |
     curl "$ISSUE_BODY"
+```
+
+For `actions/github-script` steps, the auto-fix moves the expression to an environment variable and rewrites the script to read it via `process.env`:
+
+**Before:**
+```yaml
+- uses: actions/github-script@v6
+  with:
+    script: |
+      const response = await fetch('${{ github.event.issue.body }}');
+```
+
+**After:**
+```yaml
+- uses: actions/github-script@v6
+  with:
+    script: |
+      const response = await fetch(process.env.ISSUE_BODY);
+  env:
+    ISSUE_BODY: ${{ github.event.issue.body }}
 ```
 
 Note: The auto-fix moves the expression to an environment variable, which prevents shell injection. However, additional validation (URL allowlist, IP blocking) is still recommended to fully mitigate SSRF risks.
