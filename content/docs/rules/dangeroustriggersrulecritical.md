@@ -24,13 +24,16 @@ Privileged triggers are dangerous because they:
 
 ### Privileged Triggers
 
-| Trigger | Risk | Description |
-|---------|------|-------------|
-| `pull_request_target` | Critical | Has write access and secrets, triggered by untrusted PRs |
-| `workflow_run` | Critical | Executes with elevated privileges after another workflow |
-| `issue_comment` | Critical | Triggered by untrusted issue/PR comments |
-| `issues` | High | Can be triggered by external users |
-| `discussion_comment` | High | Triggered by untrusted discussion comments |
+| Trigger | Why it is privileged |
+|---------|----------------------|
+| `pull_request_target` | Runs against the base repository with write access and secrets, but is triggered by untrusted PRs |
+| `workflow_run` | Executes with elevated privileges after another workflow |
+| `issue_comment` | Triggered by untrusted issue/PR comments |
+| `issues` | Can be triggered by external users |
+| `discussion_comment` | Triggered by untrusted discussion comments |
+| `pull_request_review` | Triggered by untrusted PR reviews; runs against the base repository |
+
+> All of these are privileged triggers. Whether a finding is reported as **critical** or **medium** is determined by the mitigation score below (0 → critical, 1–2 → medium), **not** by which trigger is used.
 
 ### Detection Logic
 
@@ -38,7 +41,7 @@ The rule checks for privileged triggers and analyzes security mitigations using 
 
 | Mitigation | Points | Description |
 |------------|--------|-------------|
-| Permissions Restriction | +3 | `permissions: read-all` or `permissions: {}` |
+| Permissions Restriction | +3 | Any non-write-all permissions: `permissions: read-all`, `permissions: none`, `permissions: {}`, or a map of individual scopes (e.g. `contents: read`) |
 | Environment Protection | +2 | Using protected environments with approval |
 | Label Condition | +1 | Checking for approved labels like "safe-to-run" |
 | Actor Restriction | +1 | Checking `github.actor` or `github.triggering_actor` |
@@ -48,6 +51,8 @@ The rule checks for privileged triggers and analyzes security mitigations using 
 - **Critical** (score = 0): No mitigations - immediate risk
 - **Medium** (score = 1-2): Minimal mitigations - needs improvement
 - **Acceptable** (score >= 3): Adequate mitigations
+
+> **Cache-write exception:** when a job uses a cache-writing action (`actions/cache`, `actions/cache/save`, or `actions/setup-*` with `cache: true`), a permissions restriction is **not** counted as a mitigation, because the `GITHUB_TOKEN` permissions do not control cache writes. In that case the finding still fires (with a note about the cache caveat), and the auto-fix does not add `permissions: {}`.
 
 ### Example Vulnerable Workflow
 
