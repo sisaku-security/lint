@@ -45,16 +45,18 @@ Detects output clobbering in privileged workflow contexts:
 - `issue_comment`
 - `issues`
 - `discussion_comment`
+- `pull_request_review`
 
 These triggers have write access or access to secrets, making exploitation more severe.
 
 ### output-clobbering-medium
 
-Detects output clobbering in normal workflow contexts:
+Detects output clobbering in normal workflow contexts — **any trigger that is not one of the privileged ones above**. The triggers below are common examples, not an exhaustive list:
 - `pull_request`
 - `push`
 - `schedule`
 - `workflow_dispatch`
+- other non-privileged triggers such as `release`, `create`, `registry_package`, etc.
 
 These triggers have limited permissions but can still lead to issues like incorrect build outputs or workflow logic bypass.
 
@@ -65,6 +67,7 @@ The rule detects patterns like:
 - `echo "name=${{ untrusted }}" >> "$GITHUB_OUTPUT"`
 - `echo "name=${{ untrusted }}" >> '$GITHUB_OUTPUT'`
 - `echo "name=${{ untrusted }}" >> ${GITHUB_OUTPUT}`
+- `echo "name=${{ untrusted }}" >>$GITHUB_OUTPUT` (no space after `>>`)
 - `printf "name=${{ untrusted }}\n" >> "$GITHUB_OUTPUT"`
 
 ## Safe Patterns
