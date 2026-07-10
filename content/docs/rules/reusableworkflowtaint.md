@@ -122,21 +122,30 @@ jobs:
 
 ### Example Output
 
-Running sisakulint will detect both the tainted input passing and unsafe usage:
+The exact message depends on whether the caller and callee are both resolvable in the run. Running over the whole repository (or passing both files) lets the caller and its local callee be joined:
 
-**Caller workflow detection:**
+**Caller and callee joined (whole repo):**
+```bash
+$ sisakulint
+
+.github/workflows/caller.yml:10:20: reusable-workflow-taint-chain (critical): untrusted source [github.event.pull_request.title] flows from caller .github/workflows/caller.yml `with: pr_title` to callee .github/workflows/pr-processor.yml run sink at line:24. [reusable-workflow-taint]
+```
+
+**Caller only (callee is remote or not present in this repo):**
 ```bash
 $ sisakulint .github/workflows/caller.yml
 
 .github/workflows/caller.yml:10:20: reusable workflow input taint (critical): input "pr_title" receives untrusted value "github.event.pull_request.title" which may be used unsafely in the called workflow "./.github/workflows/pr-processor.yml". Consider validating or sanitizing the input. [reusable-workflow-taint]
 ```
 
-**Callee workflow detection:**
+**Callee only (no caller in this repo passes untrusted input):**
 ```bash
 $ sisakulint .github/workflows/pr-processor.yml
 
-.github/workflows/pr-processor.yml:24:20: tainted input in reusable workflow: "inputs.pr_title" may contain untrusted data passed from the caller workflow. Avoid using it directly in inline scripts. Instead, pass it through an environment variable. [reusable-workflow-taint]
+.github/workflows/pr-processor.yml:24:20: reusable-workflow-taint (medium): callee uses ${{ inputs.pr_title }} in run sink, but no caller in this repo passes untrusted data. If this workflow is called from outside the repo, future callers passing untrusted input will become injection vectors. [reusable-workflow-taint]
 ```
+
+> The legacy message `tainted input in reusable workflow: ...` is a fallback used only when there is no project context (no `.git`/`.github/workflows` to correlate files). Normal CLI runs always have a project, so you will see the messages above instead.
 
 ### Auto-fix Support
 
@@ -278,6 +287,8 @@ The following sources are considered untrusted when passed to reusable workflows
 - `github.event.review.body`
 - `github.event.review_comment.body`
 
+> These are representative examples. The actual untrusted/trusted determination uses the same expression analysis shared with the code-injection rules, not a fixed list.
+
 **Other:**
 - `github.head_ref`
 - `github.event.discussion.title`
@@ -330,8 +341,12 @@ The following sources are considered untrusted when passed to reusable workflows
 | `pull_request_target` | Critical | Write access + secrets |
 | `workflow_run` | Critical | Elevated privileges |
 | `issue_comment` | Critical | Secrets access |
+| `issues` | Critical | Privileged trigger, external users |
+| `discussion_comment` | Critical | Privileged trigger, untrusted comments |
+| `pull_request_review` | Critical | Privileged trigger, runs against base repo |
 | `pull_request` | Medium | Read-only, limited scope |
 | `push` | Medium | Only trusted commits |
+| other non-privileged triggers | Medium | Any trigger not in the privileged set above |
 
 ### Complementary Rules
 
@@ -352,10 +367,12 @@ The rule performs two types of analysis:
    - `run:` scripts (shell context)
    - `actions/github-script` `script:` parameter (JavaScript context)
 
+**Cross-file resolution is fail-safe.** The caller-side warning is emitted even when the callee cannot be resolved locally — for example when the callee is a remote reference (`owner/repo/.github/workflows/x.yml@ref`) or is not present in this repository. Only when the callee **is** resolved locally and is provably safe is the caller warning suppressed.
+
 ### Performance
 
 - **Detection**: O(n) where n is the number of jobs and steps
-- **Cross-file Analysis**: Each file is analyzed independently
+- **Cross-file Analysis**: Caller and callee taint state is collected per file, then correlated in a single join step after all files are parsed. A caller in one file and its local (`./`) callee in another are matched, so a finding can span two files.
 - **No External Calls**: Purely static analysis
 
 ### See Also
