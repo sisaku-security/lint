@@ -110,7 +110,7 @@ It is important to distinguish two levels of automated fixing in security toolin
 - **[ref-confusion rule]({{< ref "docs/rules/refconfusion.md" >}})** - Detects ref confusion vulnerabilities
 - **[unpinned-images rule]({{< ref "docs/rules/unpinnedimages.md" >}})** - Detects unpinned container images
 - **[action-list rule]({{< ref "docs/rules/actionlist.md" >}})** - Action allowlist/blocklist enforcement
-- **[dependabot-github-actions rule]({{< ref "docs/rules/dependabotgithubactions.md" >}})** - Checks Dependabot configuration for GitHub Actions ecosystem
+- **[dependabot-github-actions rule]({{< ref "docs/rules/dependabotgithubactionsrule.md" >}})** - Checks Dependabot configuration for GitHub Actions ecosystem
 
 ### Credential & Secret Protection
 
