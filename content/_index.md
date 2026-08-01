@@ -6,7 +6,7 @@ draft = false
 
 # Find and auto-fix security vulnerabilities in GitHub Actions
 
-**52 security rules. 38+ auto-fixes. Taint propagation. 100% detection on GitHub Security Lab advisories.**
+**50+ security rules. 38+ auto-fixes. Taint propagation. 100% detection on GitHub Security Lab advisories.**
 
 {{< figure src="https://github.com/sisaku-security/homebrew-sisakulint/assets/67861004/e9801cbb-fbe1-4822-a5cd-d1daac33e90f" alt="sisakulint logo" width="300px" >}}
 
@@ -18,7 +18,6 @@ $ brew install sisakulint
 {{< youtube id="DhgqKOmzLSk" title="sisakulint Demo" >}}
 
 {{< popup_link2 href=https://github.com/sisaku-security/sisakulint >}}
-
 ---
 
 ## What is sisakulint?
@@ -253,8 +252,7 @@ sisakulint automatically searches for YAML files in the `.github/workflows` dire
 
 ## Achievements
 
-- [Black Hat USA 2026](https://www.blackhat.com/) - The World's Premier Technical Security Conference in Las Vegas.
-- [Black Hat Asia 2025](https://www.blackhat.com/asia-25/arsenal-overview.html) - The World's Premier Technical Security Conference in Singapore. ref: [Arsenal](https://www.blackhat.com/asia-25/arsenal/schedule/#sisakulint---ci-friendly-static-linter-with-sast-semantic-analysis-for-github-actions-43229)
+- [DEF CON 34 Demo Labs](https://defcon.org/html/defcon-34/dc-34-demolabs.html#content_66530) - Two live 45-minute demonstrations of sisakulint in Las Vegas.
 
 ---
 
