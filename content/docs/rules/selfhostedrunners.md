@@ -186,5 +186,8 @@ covers all of them.
 
 - [GitHub: About self-hosted runners — Self-hosted runner security](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/about-self-hosted-runners#self-hosted-runner-security)
 - [GitHub: Security hardening for GitHub Actions](https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions)
-- [OWASP: CI/CD Top 10 Security Risks](https://owasp.org/www-project-top-10-ci-cd-security-risks/)
+- [CWE-250: Execution with Unnecessary Privileges](https://cwe.mitre.org/data/definitions/250.html)
+  — a job on a self-hosted runner operates with the host's reach, where an ephemeral one would do
+- [OWASP CICD-SEC-7: Insecure System Configuration](https://owasp.org/www-project-top-10-ci-cd-security-risks/CICD-SEC-07-Insecure-System-Configuration)
+  — the pipeline's systems and how they are hardened, which is where the choice of runner sits
 - [Rule source (`v0.3.6`)](https://github.com/sisaku-security/sisakulint/blob/v0.3.6/pkg/core/selfhostedrunnersrule.go)
