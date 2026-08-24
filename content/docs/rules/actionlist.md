@@ -254,9 +254,40 @@ file, and by whatever runs alongside the lint.
 | `actions/*` | yes |
 | `*` | yes (allows everything — effectively disabled) |
 
+### Where the allowlist recommendation comes from
+
+The briefing StepSecurity gave at Black Hat USA 2025 on the `tj-actions/changed-files` compromise
+ends with four recommendations, and one of them is "Enforce an Action Allowlist". This rule is a
+check of that kind. What makes curation a control at all is scale: "With over 25,000 actions in
+the GitHub Marketplace, curation is essential."
+
+What that briefing reports about the incident:
+
+- The action was "actively used in over 23,000 public repositories, including those belonging to
+  GitHub, Hugging Face, HashiCorp, Meta, and Microsoft".
+- The attackers used "imposter commits", which live in a fork rather than in the target
+  repository. Since "release tags can point to these ghost commits", the code ran while the
+  repository's own history stayed clean.
+- The payload "dumped the memory of the Runner.Worker process", which holds the secrets a run is
+  given, and those secrets left through the build log.
+
+A list would not by itself have stopped this one. The reference written in the workflow never
+changed. The tag it named was repointed underneath it, and a pattern naming the provider matches
+the compromised reference exactly as it matches the honest one. That is the other axis, and it is
+another of the same four recommendations: "Organizations using commit SHAs instead of mutable
+tags were not affected by this incident" (see Security Background, and `commit-sha`).
+
+OWASP's Top 10 CI/CD Security Risks counts using a marketplace action as granting a third party
+access to the pipeline. Under CICD-SEC-08 the risk covers "installing a plugin from the build
+system’s marketplace (e.g. actions in Github Actions, Orbs in CircleCI)", and its recommendations
+are governance controls over the whole lifecycle of such a dependency (approval, visibility over
+ongoing usage, deprovisioning). A list held in one repository covers part of the first.
+
 ## References
 
 - [GitHub: Using third-party actions](https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions#using-third-party-actions)
 - [GitHub: Managing GitHub Actions settings for a repository](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository)
 - [OWASP: CICD-SEC-03 - Dependency Chain Abuse](https://owasp.org/www-project-top-10-ci-cd-security-risks/CICD-SEC-03-Dependency-Chain-Abuse)
+- [OWASP: CICD-SEC-08 - Ungoverned Usage of 3rd Party Services](https://owasp.org/www-project-top-10-ci-cd-security-risks/CICD-SEC-08-Ungoverned-Usage-of-3rd-Party-Services)
+- [StepSecurity: our Black Hat 2025 presentation on the tj-actions supply chain breach](https://www.stepsecurity.io/blog/when-changed-files-changed-everything-our-black-hat-2025-presentation-on-the-tj-actions-supply-chain-breach)
 - [Rule source (`v0.3.6`)](https://github.com/sisaku-security/sisakulint/blob/v0.3.6/pkg/core/actionlist.go)
