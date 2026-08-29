@@ -91,8 +91,8 @@ It is important to distinguish two levels of automated fixing in security toolin
 
 - **[code-injection-critical]({{< ref "docs/rules/codeinjectioncritical.md" >}})** - Detects code injection in privileged triggers
 - **[code-injection-medium]({{< ref "docs/rules/codeinjectionmedium.md" >}})** - Detects code injection in normal triggers
-- **[envvar-injection-critical]({{< ref "docs/rules/envvarinjectioncritical.md" >}})** - Environment variable injection in privileged triggers
-- **[envvar-injection-medium]({{< ref "docs/rules/envvarinjectionmedium.md" >}})** - Environment variable injection in normal triggers
+- **[envvar-injection-critical]({{< ref "docs/rules/envvarinjection.md" >}})** - Environment variable injection in privileged triggers
+- **[envvar-injection-medium]({{< ref "docs/rules/envvarinjection.md" >}})** - Environment variable injection in normal triggers
 - **[envpath-injection-critical]({{< ref "docs/rules/envpathinjectioncritical.md" >}})** - PATH injection in privileged triggers
 - **[envpath-injection-medium]({{< ref "docs/rules/envpathinjectionmedium.md" >}})** - PATH injection in normal triggers
 - **[argument-injection rule]({{< ref "docs/rules/argumentinjection.md" >}})** - Detects command-line argument injection

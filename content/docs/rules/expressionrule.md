@@ -505,7 +505,7 @@ steps:
 
 - **[conditional]({{< ref "conditionalrule.md" >}})**: Validates specific conditional expression patterns
 - **[code-injection-critical]({{< ref "codeinjectioncritical.md" >}})**: Detects untrusted input in expressions
-- **[envvar-injection-critical]({{< ref "envvarinjectioncritical.md" >}})**: Detects untrusted input written to environment files
+- **[envvar-injection-critical]({{< ref "envvarinjection.md" >}})**: Detects untrusted input written to environment files
 
 ### Detection Example
 

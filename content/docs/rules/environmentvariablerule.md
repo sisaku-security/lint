@@ -333,8 +333,8 @@ env:
 ### Relationship to Other Rules
 
 - **[expression]({{< ref "expressionrule.md" >}})**: Expression syntax in environment variable values
-- **[envvar-injection-critical]({{< ref "envvarinjectioncritical.md" >}})**: Untrusted input in environment variable values
-- **[envvar-injection-medium]({{< ref "envvarinjectionmedium.md" >}})**: Environment variable injection in normal triggers
+- **[envvar-injection-critical]({{< ref "envvarinjection.md" >}})**: Untrusted input in environment variable values
+- **[envvar-injection-medium]({{< ref "envvarinjection.md" >}})**: Environment variable injection in normal triggers
 
 ### Detection Example
 
