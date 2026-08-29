@@ -248,9 +248,46 @@ the workflow.
 
 **The impact is conditional.** A finding means only that an untrusted expression shares a line
 with something matching the append pattern. Whether a later step reads the variable, and what it
-does with it, is not examined. Two platform limits also bound what an injected variable can be:
-GitHub refuses to let `$GITHUB_ENV` overwrite the default `GITHUB_*` and `RUNNER_*` variables,
-and it specifically refuses `NODE_OPTIONS` (see References).
+does with it, is not examined. The platform bounds only a narrow set of names. Measured on
+`ubuntu-latest`: writing `NODE_OPTIONS` is refused with a build error
+(`Can't store NODE_OPTIONS output parameter using '$GITHUB_ENV' command`), and a runner-provided
+default such as `RUNNER_OS` keeps its own value at run time. Everything else takes: `PATH` can be
+prepended, and even `GITHUB_TOKEN` can be shadowed — it is not a runner default (it arrives as a
+secret), so a following step reads an attacker's value in its place. This is not a page about
+what an injected variable can do; the point is that the platform's refusals cover far less than
+their reputation, so the finding should not be read as bounded by them.
+
+## Attack Scenario
+
+The strongest use of this injection needs two things: the `$GITHUB_ENV` write to set a variable,
+and something else to give that variable a target. On a privileged trigger:
+
+1. A step under `pull_request_target` writes an untrusted field to `$GITHUB_ENV`, e.g.
+   `echo "PR_TITLE=${{ github.event.pull_request.title }}" >> "$GITHUB_ENV"`
+2. The attacker's PR title carries a newline, so the value defines a second variable that names
+   an interpreter hook — `BASH_ENV=/path/to/attacker/file` or `LD_PRELOAD=/path/to/attacker.so`.
+   Both take effect on the steps that follow (measured on `ubuntu-latest`): `BASH_ENV` is sourced
+   by every later `bash` step, and `LD_PRELOAD`'s constructor runs in every process those steps
+   spawn
+3. The file the hook points at has to exist. On `pull_request_target` the default checkout is the
+   base repository, not the PR, so this step is where a second weakness is needed — a workflow
+   that checks out the PR head (see `untrusted-checkout` under Related Rules) puts attacker files
+   on disk, and a writable path under `$GITHUB_WORKSPACE` or `$RUNNER_TEMP` is enough
+4. From the next step on, the hook runs with the job's permissions and secrets
+
+Without step 3 the injection still defines variables the later steps read as data; the
+interpreter-hook path is what turns it into code execution, and it is not something a single
+`$GITHUB_ENV` write achieves alone.
+
+## Related Rules
+
+- [code-injection-critical]({{< ref "codeinjectioncritical.md" >}}): the same untrusted
+  expression used directly in a `run:` script, rather than written to `$GITHUB_ENV`
+- [code-injection-medium]({{< ref "codeinjectionmedium.md" >}}): the normal-trigger counterpart
+- [untrusted-checkout]({{< ref "untrustedcheckout.md" >}}): checking out the PR head under a
+  privileged trigger — the second weakness that supplies the file in the scenario above
+- [permissions]({{< ref "permissions.md" >}}): keeping the token's scope minimal, which bounds
+  what the injected environment can reach
 
 ## Rule Specific Guide
 
@@ -278,8 +315,8 @@ reports.
 
 - [GitHub: Workflow commands — setting an environment variable](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-commands?tool=bash)
   — the value is available to subsequent steps of the same job but not to the step that sets it;
-  `GITHUB_*` and `RUNNER_*` cannot be overwritten; `NODE_OPTIONS` cannot be set this way; and a
-  heredoc delimiter must not appear on its own line inside the value
+  the *default* environment variables are fixed; `NODE_OPTIONS` specifically cannot be set this
+  way; and a heredoc delimiter must not appear on its own line inside the value
 - [GitHub: Security hardening for GitHub Actions](https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#understanding-the-risk-of-script-injections)
 - [CodeQL: Environment variable injection (Critical)](https://codeql.github.com/codeql-query-help/actions/actions-envvar-injection-critical/)
 - [CodeQL: Environment variable injection (Medium)](https://codeql.github.com/codeql-query-help/actions/actions-envvar-injection-medium/)
