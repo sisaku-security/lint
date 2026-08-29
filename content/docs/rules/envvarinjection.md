@@ -321,6 +321,9 @@ reports.
 - [CodeQL: Environment variable injection (Critical)](https://codeql.github.com/codeql-query-help/actions/actions-envvar-injection-critical/)
 - [CodeQL: Environment variable injection (Medium)](https://codeql.github.com/codeql-query-help/actions/actions-envvar-injection-medium/)
 - [CWE-77: Improper Neutralization of Special Elements used in a Command](https://cwe.mitre.org/data/definitions/77.html)
+- [CWE-20: Improper Input Validation](https://cwe.mitre.org/data/definitions/20.html)
+- [OWASP: Command Injection](https://owasp.org/www-community/attacks/Command_Injection)
+- [OWASP CICD-SEC-04: Poisoned Pipeline Execution](https://owasp.org/www-project-top-10-ci-cd-security-risks/CICD-SEC-04-Poisoned-Pipeline-Execution)
 - [Rule implementation](https://github.com/sisaku-security/sisakulint/blob/dea1408b296a54edc30206ee844daf5ea185b79e/pkg/core/envvarinjection.go)
 - [Trigger analysis](https://github.com/sisaku-security/sisakulint/blob/dea1408b296a54edc30206ee844daf5ea185b79e/pkg/core/job_trigger_analyzer.go): the job-level `if:` that `code-injection`
   reads and this rule does not
