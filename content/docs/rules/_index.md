@@ -27,8 +27,8 @@ sisakulint categorizes security rules by severity based on CVSS scores, attack i
 |------|----------|-------------|
 | [code-injection-critical]({{< ref "codeinjectioncritical.md" >}}) | Critical | Detects untrusted input in privileged workflow triggers |
 | [code-injection-medium]({{< ref "codeinjectionmedium.md" >}}) | Medium | Detects untrusted input in normal workflow triggers |
-| [envvar-injection-critical]({{< ref "envvarinjectioncritical.md" >}}) | Critical | Detects untrusted input written to $GITHUB_ENV in privileged triggers |
-| [envvar-injection-medium]({{< ref "envvarinjectionmedium.md" >}}) | Medium | Detects untrusted input written to $GITHUB_ENV in normal triggers |
+| [envvar-injection-critical]({{< ref "envvarinjection.md" >}}) | Critical | Detects untrusted input written to $GITHUB_ENV in privileged triggers |
+| [envvar-injection-medium]({{< ref "envvarinjection.md" >}}) | Medium | Detects untrusted input written to $GITHUB_ENV in normal triggers |
 | [envpath-injection-critical]({{< ref "envpathinjectioncritical.md" >}}) | Critical | Detects untrusted input written to $GITHUB_PATH in privileged triggers |
 | [envpath-injection-medium]({{< ref "envpathinjectionmedium.md" >}}) | Medium | Detects untrusted input written to $GITHUB_PATH in normal triggers |
 | [output-clobbering-critical]({{< ref "outputclobbering.md" >}}) | Critical | Detects untrusted input written to $GITHUB_OUTPUT in privileged triggers |

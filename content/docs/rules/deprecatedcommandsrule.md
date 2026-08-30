@@ -342,8 +342,8 @@ The new environment file approach (`$GITHUB_ENV`, `$GITHUB_OUTPUT`, etc.) is saf
 
 ### Relationship to Other Rules
 
-- **[envvar-injection-critical]({{< ref "envvarinjectioncritical.md" >}})**: Detects injection vulnerabilities when writing to `$GITHUB_ENV`
-- **[envvar-injection-medium]({{< ref "envvarinjectionmedium.md" >}})**: Similar detection for normal triggers
+- **[envvar-injection-critical]({{< ref "envvarinjection.md" >}})**: Detects injection vulnerabilities when writing to `$GITHUB_ENV`
+- **[envvar-injection-medium]({{< ref "envvarinjection.md" >}})**: Similar detection for normal triggers
 - **[expression]({{< ref "expressionrule.md" >}})**: Validates expressions used in output values
 
 ### Detection Example

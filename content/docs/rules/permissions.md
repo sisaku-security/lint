@@ -373,7 +373,7 @@ $ sisakulint .github/workflows/ci.yml
 
 Proper permissions are foundational to other security rules:
 
-- **[envvar-injection-critical]({{< ref "envvarinjectioncritical.md" >}})**: Critical severity because privileged workflows have write permissions
+- **[envvar-injection-critical]({{< ref "envvarinjection.md" >}})**: Critical severity because privileged workflows have write permissions
 - **[code-injection-critical]({{< ref "codeinjectioncritical.md" >}})**: More dangerous in workflows with elevated permissions
 - **[untrustedcheckout]({{< ref "untrustedcheckout.md" >}})**: Checking out untrusted code with write permissions is especially risky
 

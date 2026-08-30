@@ -195,7 +195,7 @@ The rule detects:
 ### Related Rules
 
 - **[envpath-injection-critical]({{< ref "envpathinjectioncritical.md" >}})**: Detects the same pattern in privileged workflows
-- **[envvar-injection-medium]({{< ref "envvarinjectionmedium.md" >}})**: Detects environment variable injection via $GITHUB_ENV
+- **[envvar-injection-medium]({{< ref "envvarinjection.md" >}})**: Detects environment variable injection via $GITHUB_ENV
 - **[code-injection-medium]({{< ref "codeinjectionmedium.md" >}})**: Detects direct code injection in normal contexts
 
 ### References

@@ -200,7 +200,7 @@ PATH injection in privileged workflows can lead to:
 ### Related Rules
 
 - **[envpath-injection-medium]({{< ref "envpathinjectionmedium.md" >}})**: Detects the same pattern in normal (non-privileged) workflows
-- **[envvar-injection-critical]({{< ref "envvarinjectioncritical.md" >}})**: Detects environment variable injection via $GITHUB_ENV
+- **[envvar-injection-critical]({{< ref "envvarinjection.md" >}})**: Detects environment variable injection via $GITHUB_ENV
 - **[code-injection-critical]({{< ref "codeinjectioncritical.md" >}})**: Detects direct code injection in privileged contexts
 - **[untrustedcheckout]({{< ref "untrustedcheckout.md" >}})**: Detects unsafe checkout of PR code
 

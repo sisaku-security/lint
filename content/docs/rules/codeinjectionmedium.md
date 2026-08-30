@@ -461,7 +461,7 @@ This rule addresses:
 Use these rules together for comprehensive protection:
 
 1. **code-injection-critical**: Detect severe issues in privileged triggers
-2. **envvar-injection-medium**: Adds specialized detection and mitigation for $GITHUB_ENV writes (see [envvar-injection-critical Rule Interactions]({{< ref "envvarinjectioncritical.md#rule-interactions" >}}) for details)
+2. **envvar-injection-medium**: Adds specialized detection and mitigation for $GITHUB_ENV writes (see [envvar-injection-critical Rule Interactions]({{< ref "envvarinjection.md#rule-interactions" >}}) for details)
 3. **permissions**: Enforce least privilege principle
 4. **timeout-minutes**: Prevent resource exhaustion
 5. **untrusted-checkout**: Prevent checkout of malicious code
