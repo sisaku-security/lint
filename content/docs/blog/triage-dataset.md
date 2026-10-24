@@ -5,10 +5,10 @@ weight: 1
 
 # Self-Healing Triage Dataset
 
-Complete audit of all triage decisions made by the sisakuintel-agent self-healing system, published for independent verification and community challenge.
+Complete audit of all triage decisions made by the gh-intel-agent self-healing system, published for independent verification and community challenge.
 
 > Data Sources
-> - [sisakulint Issues/PRs by sisakuintel-agent](https://github.com/sisaku-security/sisakulint/issues?q=author%3Aapp%2Fsisakuintel-agent) — False positive reports and fix PRs (45 items)
+> - [sisakulint Issues/PRs by gh-intel-agent](https://github.com/sisaku-security/sisakulint/issues?q=author%3Aapp%2Fgh-intel-agent) — False positive reports and fix PRs (45 items)
 > - [sisakuintel-worker Scan Reports](https://github.com/sisaku-security/sisakuintel-worker/issues) — Full triage results including true positives (~220 reports, #300–#555)
 >
 > Last Updated: 2026-03-06
@@ -22,7 +22,7 @@ The self-healing architecture routes findings through two repositories:
 1. sisakuintel-worker: The scan-orchestrator creates [Scan Report] issues for each scanned repository. A triage comment classifies every finding as TP or FP with reasoning.
 2. sisakulint: When the triage agent identifies a false positive, it creates a bug report Issue and a corresponding fix PR in the scanner's own repository. Only FP-related items appear here.
 
-The "45 triaged items" referenced in the evaluation metrics counts 27 Finding Issues + 18 Fix PRs created by sisakuintel-agent[bot] in the sisakulint repository. TP findings are documented in sisakuintel-worker Scan Report comments.
+The "45 triaged items" referenced in the evaluation metrics counts 27 Finding Issues + 18 Fix PRs created by gh-intel-agent[bot] in the sisakulint repository. TP findings are documented in sisakuintel-worker Scan Report comments.
 
 ---
 
@@ -165,8 +165,8 @@ xychart-beta
 flowchart LR
     A["sisakuintel-worker\nscans trending repo"] --> B{"Triage\ncomment"}
     B -->|All TP| C["TP findings\ndocumented in\nScan Report"]
-    B -->|FP detected| D["sisakuintel-agent\ncreates Issue\nin sisakulint"]
-    D --> E["sisakuintel-agent\ncreates Fix PR"]
+    B -->|FP detected| D["gh-intel-agent\ncreates Issue\nin sisakulint"]
+    D --> E["gh-intel-agent\ncreates Fix PR"]
     E --> F{"Human review"}
     F -->|Approve| G["Merged\n(15 bot PRs)"]
     F -->|Reject/Revise| H["Manual fix\n(2 human PRs)"]
